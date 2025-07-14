@@ -1,0 +1,22 @@
+{
+  "name": "vehicle-cleaning-app",
+  "version": "1.0.0",
+  "description": "Vehicle cleaning service full-stack application",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "cd server && npm start",
+    "dev": "cd server && npm run dev",
+    "build": "cd client && npm run build",
+    "install-client": "cd client && npm install",
+    "install-server": "cd server && npm install",
+    "install-all": "npm run install-client && npm run install-server",
+    "heroku-postbuild": "npm run install-all && npm run build"
+  },
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  },
+  "keywords": ["vehicle", "cleaning", "service", "react", "node", "express"],
+  "author": "",
+  "license": "ISC"
+}
