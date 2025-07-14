@@ -70,6 +70,8 @@ const Register: React.FC<RegisterProps> = () => {
     try {
       const { confirmPassword, ...registerData } = formData;
       await register(registerData);
+      // Navigate to dashboard after successful registration
+      navigate('/dashboard');
     } catch (error: any) {
       setGeneralError(error.response?.data?.message || error.message || 'Registration failed');
     } finally {

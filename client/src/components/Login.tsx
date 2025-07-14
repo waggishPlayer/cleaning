@@ -46,6 +46,8 @@ const Login: React.FC<LoginProps> = () => {
     setLoading(true);
     try {
       await login(formData.email, formData.password);
+      // Navigate to dashboard after successful login
+      navigate('/dashboard');
     } catch (error: any) {
       setGeneralError(error.response?.data?.message || error.message || 'Login failed');
     } finally {
