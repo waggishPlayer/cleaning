@@ -6,7 +6,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (emailOrPhone: string, passwordOrOtp: string) => Promise<void>;
   register: (data: any) => Promise<void>;
   logout: () => void;
   updateUser: (data: Partial<User>) => Promise<void>;
@@ -67,9 +67,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (emailOrPhone: string, passwordOrOtp: string) => {
     try {
-      const response = await apiService.login({ email, password });
+      let response;
+      
+      // Check if it's email (contains @) or phone number
+      if (emailOrPhone.includes('@')) {
+        // Email login for staff
+        response = await apiService.login({ email: emailOrPhone, password: passwordOrOtp });
+      } else {
+        // Phone login for users
+        // TODO: Implement phone + OTP login API
+        // For now, we'll simulate it
+        response = await apiService.loginWithPhone({ phone: emailOrPhone, otp: passwordOrOtp });
+      }
+      
       if (response.success && response.data) {
         const { user: userData, token: tokenData } = response.data;
         setUser(userData);

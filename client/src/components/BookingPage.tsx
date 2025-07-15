@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Car, Plus, MapPin, Calendar, Clock, CreditCard, Check, X, Navigation } from 'lucide-react';
 import { apiService } from '../services/api';
+import { Car, Calendar, MapPin, Check, Plus, Navigation, CreditCard, X } from 'lucide-react';
+
+
 import { Vehicle } from '../types';
 
 interface Address {
@@ -48,7 +50,7 @@ const BookingPage: React.FC = () => {
     address: null,
     dateTime: { date: '', time: '' },
     specialInstructions: '',
-    paymentMethod: 'card'
+    paymentMethod: 'cash'
   });
 
   const [newVehicle, setNewVehicle] = useState({
@@ -86,6 +88,7 @@ const BookingPage: React.FC = () => {
     fetchVehicles();
     fetchAddresses();
   }, []);
+
 
   const fetchVehicles = async () => {
     try {
@@ -249,47 +252,73 @@ const BookingPage: React.FC = () => {
   };
 
   const handleBookingSubmit = async () => {
+    if (bookingData.paymentMethod === 'cash') {
+      // Handle cash payment - create booking directly
+      await createBookingDirect();
+    }
+  };
+
+  const createBookingDirect = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/bookings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          vehicleId: bookingData.vehicle?._id,
-          serviceId: bookingData.service?.id,
-          addressId: bookingData.address?._id,
-          scheduledDate: bookingData.dateTime.date,
-          scheduledTime: bookingData.dateTime.time,
-          specialInstructions: bookingData.specialInstructions,
-          paymentMethod: bookingData.paymentMethod
-        })
-      });
-      
-      if (response.ok) {
-        // Handle successful booking
-        alert('Booking created successfully!');
-        // Reset form or redirect
-        setCurrentStep(1);
-        setBookingData({
-          vehicle: null,
-          service: null,
-          address: null,
-          dateTime: { date: '', time: '' },
-          specialInstructions: '',
-          paymentMethod: 'card'
-        });
-      } else {
-        setError('Failed to create booking');
+      const serviceTypeMap: { [key: string]: 'exterior' | 'full-service' | 'interior' | 'premium' } = {
+        'Wash & Vacuum': 'exterior',
+        'Full Detail': 'full-service',
+        'Interior Deep Clean': 'interior',
+        'Exterior Wash & Wax': 'exterior',
+        'Premium Package': 'premium'
+      };
+
+      const serviceType = serviceTypeMap[bookingData.service?.name || ''] || 'exterior';
+
+      if (!bookingData.vehicle?._id) {
+        setError('Please select a vehicle');
+        return;
       }
-    } catch (error) {
-      setError('Error creating booking');
+
+      const bookingPayload = {
+        vehicleId: bookingData.vehicle._id,
+        serviceType: serviceType,
+        scheduledDate: bookingData.dateTime.date,
+        scheduledTime: bookingData.dateTime.time,
+        location: {
+          address: bookingData.address?.street || '',
+          city: bookingData.address?.city || '',
+          state: bookingData.address?.state || '',
+          zipCode: bookingData.address?.zipCode || ''
+        },
+        notes: bookingData.specialInstructions,
+        price: bookingData.service?.price || 0
+      };
+
+      const response = await apiService.createBooking(bookingPayload);
+      
+      if (response.success) {
+        alert('Booking created successfully! You can pay cash when our team arrives.');
+        resetForm();
+      } else {
+        setError(response.error || 'Failed to create booking');
+      }
+    } catch (error: any) {
+      setError(error.message || 'Error creating booking');
     } finally {
       setLoading(false);
     }
+  };
+
+
+
+  const resetForm = () => {
+    setCurrentStep(1);
+    setBookingData({
+      vehicle: null,
+      service: null,
+      address: null,
+      dateTime: { date: '', time: '' },
+      specialInstructions: '',
+      paymentMethod: 'cash'
+    });
+    setError('');
   };
 
   const nextStep = () => {
@@ -709,7 +738,7 @@ const BookingPage: React.FC = () => {
                     className="mr-3"
                   />
                   <CreditCard className="mr-2" size={20} />
-                  Credit/Debit Card
+                  Online Payment (UPI, Card, Net Banking)
                 </label>
                 
                 <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
@@ -733,6 +762,12 @@ const BookingPage: React.FC = () => {
             >
               {loading ? 'Processing...' : `Confirm Booking - $${bookingData.service?.price}`}
             </button>
+            
+            {bookingData.paymentMethod === 'cash' && (
+              <p className="text-sm text-gray-600 mt-2 text-center">
+                You will pay cash when our team arrives at your location
+              </p>
+            )}
           </div>
         );
 

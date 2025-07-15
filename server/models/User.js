@@ -9,15 +9,15 @@ const userSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    required: [true, 'Email is required'],
-    unique: true,
+    required: function() { return this.role === 'worker' || this.role === 'admin'; },
+    unique: false, // We'll enforce unique phone for customers
     lowercase: true,
     trim: true,
     match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
   },
   password: {
     type: String,
-    required: [true, 'Password is required'],
+    required: function() { return this.role === 'worker' || this.role === 'admin'; },
     minlength: [6, 'Password must be at least 6 characters']
   },
   role: {
@@ -28,6 +28,7 @@ const userSchema = new mongoose.Schema({
   phone: {
     type: String,
     required: [true, 'Phone number is required'],
+    unique: true, // Enforce unique phone for all users
     trim: true
   },
   address: {
@@ -82,6 +83,19 @@ userSchema.pre('save', async function(next) {
   }
 });
 
+// Validation: customers cannot have email/password
+userSchema.pre('validate', function(next) {
+  if (this.role === 'user') {
+    if (this.email) {
+      this.invalidate('email', 'Customers cannot register with email');
+    }
+    if (this.password) {
+      this.invalidate('password', 'Customers cannot register with password');
+    }
+  }
+  next();
+});
+
 // Compare password method
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
@@ -93,5 +107,16 @@ userSchema.methods.toJSON = function() {
   delete user.password;
   return user;
 };
+
+// Static method for OTP-based find or create
+userSchema.statics.findOrCreateByPhone = async function(phone, defaults = {}) {
+  let user = await this.findOne({ phone });
+  if (!user) {
+    user = await this.create({ phone, ...defaults });
+  }
+  return user;
+};
+
+userSchema.index({ phone: 1 }, { unique: true });
 
 module.exports = mongoose.model('User', userSchema); 

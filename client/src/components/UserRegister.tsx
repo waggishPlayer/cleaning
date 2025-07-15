@@ -3,20 +3,22 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../services/api';
 
-interface LoginProps {}
+interface UserRegisterProps {}
 
-const Login: React.FC<LoginProps> = () => {
-  const [currentStep, setCurrentStep] = useState(1); // 1: Phone, 2: OTP
+const UserRegister: React.FC<UserRegisterProps> = () => {
+  const [currentStep, setCurrentStep] = useState(1); // 1: Phone, 2: OTP, 3: Details
   const [formData, setFormData] = useState({
+    name: '',
     phone: '',
     otp: '',
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState(false);
   const [generalError, setGeneralError] = useState('');
+  const [, setOtpSent] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
 
-  const { login } = useAuth();
+  const { register } = useAuth();
   const navigate = useNavigate();
 
   // Start countdown for resend OTP
@@ -64,6 +66,19 @@ const Login: React.FC<LoginProps> = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const validateDetails = () => {
+    const newErrors: { [key: string]: string } = {};
+    
+    if (!formData.name.trim()) {
+      newErrors.name = 'Full name is required';
+    } else if (formData.name.trim().length < 2) {
+      newErrors.name = 'Name must be at least 2 characters';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSendOTP = async () => {
     if (!validatePhone()) return;
     
@@ -78,6 +93,7 @@ const Login: React.FC<LoginProps> = () => {
       const response = await apiService.sendOTP(fullPhone);
       
       if (response.success) {
+        setOtpSent(true);
         setCurrentStep(2);
         startResendTimer();
       } else {
@@ -91,7 +107,7 @@ const Login: React.FC<LoginProps> = () => {
     }
   };
 
-  const handleLogin = async () => {
+  const handleVerifyOTP = async () => {
     if (!validateOTP()) return;
     
     setLoading(true);
@@ -101,14 +117,44 @@ const Login: React.FC<LoginProps> = () => {
       const cleanPhone = formData.phone.replace(/\D/g, '');
       const fullPhone = `+91${cleanPhone}`;
       
-      // Login with phone and OTP
-      await login(fullPhone, formData.otp);
+      // Verify OTP
+      const response = await apiService.verifyOTP(fullPhone, formData.otp);
       
-      // Navigate to dashboard after successful login
+      if (response.success) {
+        setCurrentStep(3);
+      } else {
+        setGeneralError(response.message || 'Invalid OTP');
+      }
+      
+    } catch (error: any) {
+      setGeneralError(error.response?.data?.message || error.message || 'Invalid OTP');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async () => {
+    if (!validateDetails()) return;
+    
+    setLoading(true);
+    setGeneralError('');
+    
+    try {
+      const cleanPhone = formData.phone.replace(/\D/g, '');
+      const fullPhone = `+91${cleanPhone}`;
+      
+      // Register user with phone-based authentication
+      await register({
+        name: formData.name,
+        phone: fullPhone,
+        role: 'user' // Fixed to user role
+      });
+      
+      // Navigate to dashboard after successful registration
       navigate('/dashboard');
       
     } catch (error: any) {
-      setGeneralError(error.response?.data?.message || error.message || 'Login failed');
+      setGeneralError(error.response?.data?.message || error.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
@@ -172,10 +218,10 @@ const Login: React.FC<LoginProps> = () => {
           <div className="space-y-6">
             <div className="text-center">
               <h2 className="text-3xl font-extrabold gradient-text">
-                Welcome Back!
+                Get Started
               </h2>
               <p className="mt-2 text-gray-600 text-lg">
-                Enter your phone number to sign in
+                Enter your phone number to create your account
               </p>
             </div>
             
@@ -242,10 +288,10 @@ const Login: React.FC<LoginProps> = () => {
           <div className="space-y-6">
             <div className="text-center">
               <h2 className="text-3xl font-extrabold gradient-text">
-                Enter Verification Code
+                Verify Phone Number
               </h2>
               <p className="mt-2 text-gray-600 text-lg">
-                Enter the 6-digit code sent to +91 {formData.phone}
+                Enter the 6-digit code sent to {formData.phone}
               </p>
             </div>
             
@@ -283,21 +329,21 @@ const Login: React.FC<LoginProps> = () => {
             </div>
             
             <button
-              onClick={handleLogin}
+              onClick={handleVerifyOTP}
               disabled={loading}
               className="btn-primary w-full flex justify-center items-center py-4 text-lg font-semibold"
             >
               {loading ? (
                 <>
                   <div className="loading-spinner mr-2"></div>
-                  Signing in...
+                  Verifying...
                 </>
               ) : (
                 <>
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013 3v1" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  Sign in
+                  Verify OTP
                 </>
               )}
             </button>
@@ -317,32 +363,98 @@ const Login: React.FC<LoginProps> = () => {
           </div>
         );
         
+      case 3:
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-3xl font-extrabold gradient-text">
+                Complete Your Profile
+              </h2>
+              <p className="mt-2 text-gray-600 text-lg">
+                Tell us a bit about yourself
+              </p>
+            </div>
+            
+            <div>
+              <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-2">
+                Full Name
+              </label>
+              <div className="relative">
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  autoComplete="name"
+                  required
+                  className={`input-field ${errors.name ? 'error' : ''}`}
+                  placeholder="Enter your full name"
+                  value={formData.name}
+                  onChange={handleChange}
+                />
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+              </div>
+              {errors.name && (
+                <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {errors.name}
+                </p>
+              )}
+            </div>
+            
+            <button
+              onClick={handleRegister}
+              disabled={loading}
+              className="btn-primary w-full flex justify-center items-center py-4 text-lg font-semibold"
+            >
+              {loading ? (
+                <>
+                  <div className="loading-spinner mr-2"></div>
+                  Creating account...
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                  </svg>
+                  Create Account
+                </>
+              )}
+            </button>
+          </div>
+        );
+        
       default:
         return null;
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <div className="flex justify-center mb-6">
-            <div className="w-14 h-10 bg-black rounded-full overflow-hidden flex items-center justify-center shadow-lg">
-              <img src="/logo.png" alt="Caarvo Logo" className="h-8 w-auto object-contain" />
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl flex items-center justify-center shadow-lg">
+              <span className="text-white font-bold text-2xl">S</span>
             </div>
           </div>
           
           {/* Progress indicator */}
           <div className="flex justify-center mb-6">
             <div className="flex items-center">
-              {[1, 2].map((step) => (
+              {[1, 2, 3].map((step) => (
                 <React.Fragment key={step}>
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
                     step <= currentStep ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
                   }`}>
                     {step}
                   </div>
-                  {step < 2 && (
+                  {step < 3 && (
                     <div className={`w-8 h-1 mx-2 ${
                       step < currentStep ? 'bg-blue-500' : 'bg-gray-200'
                     }`} />
@@ -368,13 +480,13 @@ const Login: React.FC<LoginProps> = () => {
             
             <div className="text-center pt-4 border-t border-gray-200">
               <p className="text-gray-600">
-                Don't have an account?{' '}
+                Already have an account?{' '}
                 <button
                   type="button"
-                  onClick={() => navigate('/register')}
+                  onClick={() => navigate('/login')}
                   className="font-semibold text-blue-600 hover:text-blue-500 transition-colors duration-200 hover:underline"
                 >
-                  Sign up here
+                  Sign in here
                 </button>
               </p>
               <p className="text-sm text-gray-500 mt-2">
@@ -394,4 +506,4 @@ const Login: React.FC<LoginProps> = () => {
   );
 };
 
-export default Login; 
+export default UserRegister;

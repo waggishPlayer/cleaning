@@ -98,10 +98,15 @@ export interface LoginCredentials {
   password: string;
 }
 
+export interface PhoneLoginCredentials {
+  phone: string;
+  otp: string;
+}
+
 export interface RegisterData {
   name: string;
-  email: string;
-  password: string;
+  email?: string;
+  password?: string;
   confirmPassword?: string;
   phone: string;
   role?: 'user' | 'worker' | 'admin';
@@ -111,6 +116,12 @@ export interface RegisterData {
     state?: string;
     zipCode?: string;
   };
+}
+
+export interface UserRegisterData {
+  name: string;
+  phone: string;
+  role: 'user';
 }
 
 export interface VehicleFormData {

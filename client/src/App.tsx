@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import SplashScreen from './components/SplashScreen';
 import Login from './components/Login';
-import Register from './components/Register';
+import UserRegister from './components/UserRegister';
+import StaffLogin from './components/StaffLogin';
 import Dashboard from './components/Dashboard';
 import BookingPage from './components/BookingPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import LandingPage from './components/LandingPage';
 
 const AppContent: React.FC = () => {
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
   // Remove authMode state, as login/register will be routed
 
@@ -23,9 +24,26 @@ const AppContent: React.FC = () => {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/register" element={<UserRegister />} />
+        <Route path="/staff" element={<StaffLogin />} />
         <Route 
           path="/dashboard/*" 
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/dashboard" 
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/worker/dashboard" 
           element={
             <ProtectedRoute>
               <Dashboard />

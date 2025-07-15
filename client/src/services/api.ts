@@ -6,6 +6,7 @@ import {
   AuthResponse, 
   ApiResponse, 
   LoginCredentials, 
+  PhoneLoginCredentials,
   RegisterData,
   VehicleFormData,
   BookingFormData,
@@ -56,6 +57,21 @@ class ApiService {
   // Auth endpoints
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     const response: AxiosResponse<AuthResponse> = await this.api.post('/auth/login', credentials);
+    return response.data;
+  }
+
+  async loginWithPhone(credentials: PhoneLoginCredentials): Promise<AuthResponse> {
+    const response: AxiosResponse<AuthResponse> = await this.api.post('/auth/login-phone', credentials);
+    return response.data;
+  }
+
+  async sendOTP(phone: string): Promise<ApiResponse<null>> {
+    const response: AxiosResponse<ApiResponse<null>> = await this.api.post('/auth/send-otp', { phone });
+    return response.data;
+  }
+
+  async verifyOTP(phone: string, otp: string): Promise<ApiResponse<null>> {
+    const response: AxiosResponse<ApiResponse<null>> = await this.api.post('/auth/verify-otp', { phone, otp });
     return response.data;
   }
 
@@ -232,6 +248,29 @@ class ApiService {
     const response: AxiosResponse<ApiResponse<Analytics>> = await this.api.get('/admin/analytics', {
       params: { period },
     });
+    return response.data;
+  }
+
+  // Payment endpoints
+  async createPaymentOrder(bookingId: string): Promise<ApiResponse<{ orderId: string; amount: number; currency: string }>> {
+    const response: AxiosResponse<ApiResponse<{ orderId: string; amount: number; currency: string }>> = await this.api.post('/payments/create-order', {
+      bookingId
+    });
+    return response.data;
+  }
+
+  async verifyPayment(paymentData: {
+    orderId: string;
+    paymentId: string;
+    signature: string;
+    bookingId: string;
+  }): Promise<ApiResponse<{ verified: boolean; booking: Booking }>> {
+    const response: AxiosResponse<ApiResponse<{ verified: boolean; booking: Booking }>> = await this.api.post('/payments/verify', paymentData);
+    return response.data;
+  }
+
+  async getPaymentStatus(bookingId: string): Promise<ApiResponse<{ status: string; details: any }>> {
+    const response: AxiosResponse<ApiResponse<{ status: string; details: any }>> = await this.api.get(`/payments/status/${bookingId}`);
     return response.data;
   }
 
