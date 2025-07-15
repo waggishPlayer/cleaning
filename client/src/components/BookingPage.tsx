@@ -64,7 +64,8 @@ const BookingPage: React.FC = () => {
     year: new Date().getFullYear(),
     color: '',
     licensePlate: '',
-    vehicleType: 'car'
+    vehicleType: 'sedan',
+    size: 'medium'
   });
 
   const [newAddress, setNewAddress] = useState({
@@ -155,7 +156,8 @@ const BookingPage: React.FC = () => {
           year: new Date().getFullYear(),
           color: '',
           licensePlate: '',
-          vehicleType: 'car'
+          vehicleType: 'sedan',
+          size: 'medium'
         });
         setShowAddVehicle(false);
         setError('');
@@ -365,10 +367,23 @@ const BookingPage: React.FC = () => {
                     onChange={(e) => setNewVehicle({ ...newVehicle, vehicleType: e.target.value })}
                     className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="car">Car</option>
-                    <option value="truck">Truck</option>
+                    <option value="sedan">Sedan</option>
                     <option value="suv">SUV</option>
+                    <option value="truck">Truck</option>
                     <option value="van">Van</option>
+                    <option value="luxury">Luxury</option>
+                    <option value="sports">Sports Car</option>
+                    <option value="other">Other</option>
+                  </select>
+                  <select
+                    value={newVehicle.size}
+                    onChange={(e) => setNewVehicle({ ...newVehicle, size: e.target.value })}
+                    className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="small">Small</option>
+                    <option value="medium">Medium</option>
+                    <option value="large">Large</option>
+                    <option value="extra-large">Extra Large</option>
                   </select>
                 </div>
                 <div className="flex justify-end mt-4 space-x-2">
