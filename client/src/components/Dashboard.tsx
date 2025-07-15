@@ -93,7 +93,6 @@ const { user, logout } = useAuth();
     ],
     user: [
       { title: 'Book Service', desc: 'Schedule a new cleaning', icon: '📅' },
-      { title: 'My Vehicles', desc: 'Manage your vehicles', icon: '🚗' },
       { title: 'Booking History', desc: 'View past bookings', icon: '📋' },
       { title: 'Profile', desc: 'Update your profile', icon: '👤' }
     ],
@@ -142,7 +141,7 @@ const { user, logout } = useAuth();
         {/* Welcome Section */}
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
-Hello, {user?.name}! 👋 {user?.role === 'user' && <button onClick={() => navigate('/booking')} className="ml-4 btn-primary">Book a Service</button>}
+Hello, {user?.name}! 👋
           </h2>
           <p className="text-gray-600 text-lg">
             {user?.role === 'admin' && 'Manage your car wash business from here.'}
@@ -163,22 +162,24 @@ Hello, {user?.name}! 👋 {user?.role === 'user' && <button onClick={() => navig
         )}
 
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats[user?.role as keyof typeof stats]?.map((stat, index) => (
-            <div key={index} className="card hover:scale-105 transition-transform duration-300">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">{stat.label}</p>
-                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                </div>
-                <div className={`w-12 h-12 ${stat.color} rounded-2xl flex items-center justify-center text-white text-xl`}>
-                  {stat.icon}
+        {/* Stats Grid - Only show for admin and worker roles */}
+        {user?.role !== 'user' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {stats[user?.role as keyof typeof stats]?.map((stat, index) => (
+              <div key={index} className="card hover:scale-105 transition-transform duration-300">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">{stat.label}</p>
+                    <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                  </div>
+                  <div className={`w-12 h-12 ${stat.color} rounded-2xl flex items-center justify-center text-white text-xl`}>
+                    {stat.icon}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* Quick Actions */}
         <div className="mb-8">
@@ -191,8 +192,6 @@ Hello, {user?.name}! 👋 {user?.role === 'user' && <button onClick={() => navig
                 onClick={() => {
                   if (action.title === 'Book Service') {
                     navigate('/booking');
-                  } else if (action.title === 'My Vehicles') {
-                    setShowVehicleManager(true);
                   }
                   // Add more actions as needed
                 }}

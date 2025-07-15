@@ -1,15 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Car, Plus, MapPin, Calendar, Clock, CreditCard, Check, X } from 'lucide-react';
-
-interface Vehicle {
-  _id: string;
-  make: string;
-  model: string;
-  year: number;
-  color: string;
-  licensePlate: string;
-  vehicleType: string;
-}
+import { apiService } from '../services/api';
+import { Vehicle } from '../types';
 
 interface Address {
   _id: string;
@@ -64,8 +56,8 @@ const BookingPage: React.FC = () => {
     year: new Date().getFullYear(),
     color: '',
     licensePlate: '',
-    vehicleType: 'sedan',
-    size: 'medium'
+    vehicleType: 'sedan' as const,
+    size: 'medium' as const
   });
 
   const [newAddress, setNewAddress] = useState({
@@ -96,15 +88,9 @@ const BookingPage: React.FC = () => {
 
   const fetchVehicles = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/vehicles', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setVehicles(data);
+      const response = await apiService.getVehicles();
+      if (response.success && response.data) {
+        setVehicles(response.data);
       }
     } catch (error) {
       console.error('Error fetching vehicles:', error);
@@ -136,36 +122,36 @@ const BookingPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/vehicles', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(newVehicle)
+      const response = await apiService.createVehicle({
+        make: newVehicle.make,
+        model: newVehicle.model,
+        year: newVehicle.year,
+        licensePlate: newVehicle.licensePlate,
+        color: newVehicle.color,
+        vehicleType: newVehicle.vehicleType,
+        size: newVehicle.size,
+        notes: ''
       });
       
-      if (response.ok) {
-        const vehicle = await response.json();
-        setVehicles([...vehicles, vehicle]);
-        setBookingData({ ...bookingData, vehicle });
+      if (response.success && response.data) {
+        setVehicles([...vehicles, response.data]);
+        setBookingData({ ...bookingData, vehicle: response.data });
         setNewVehicle({
           make: '',
           model: '',
           year: new Date().getFullYear(),
           color: '',
           licensePlate: '',
-          vehicleType: 'sedan',
-          size: 'medium'
+          vehicleType: 'sedan' as const,
+          size: 'medium' as const
         });
         setShowAddVehicle(false);
         setError('');
       } else {
-        setError('Failed to add vehicle');
+        setError(response.error || 'Failed to add vehicle');
       }
-    } catch (error) {
-      setError('Error adding vehicle');
+    } catch (error: any) {
+      setError(error.message || 'Error adding vehicle');
     } finally {
       setLoading(false);
     }
@@ -364,7 +350,7 @@ const BookingPage: React.FC = () => {
                   />
                   <select
                     value={newVehicle.vehicleType}
-                    onChange={(e) => setNewVehicle({ ...newVehicle, vehicleType: e.target.value })}
+                    onChange={(e) => setNewVehicle({ ...newVehicle, vehicleType: e.target.value as any })}
                     className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="sedan">Sedan</option>
@@ -377,7 +363,7 @@ const BookingPage: React.FC = () => {
                   </select>
                   <select
                     value={newVehicle.size}
-                    onChange={(e) => setNewVehicle({ ...newVehicle, size: e.target.value })}
+                    onChange={(e) => setNewVehicle({ ...newVehicle, size: e.target.value as any })}
                     className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="small">Small</option>

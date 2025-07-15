@@ -11,6 +11,8 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ onClose }) => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState<VehicleFormData>({
     make: '',
     model: '',
@@ -58,24 +60,40 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ onClose }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    
     try {
+      console.log('Submitting vehicle data:', formData);
+      
       if (editingVehicle) {
         const response = await apiService.updateVehicle(editingVehicle._id, formData);
+        console.log('Update response:', response);
         if (response.success) {
           setVehicles(vehicles.map(v => 
             v._id === editingVehicle._id ? response.data! : v
           ));
+          resetForm();
+          setShowForm(false);
+        } else {
+          setError(response.error || 'Failed to update vehicle');
         }
       } else {
         const response = await apiService.createVehicle(formData);
+        console.log('Create response:', response);
         if (response.success) {
           setVehicles([...vehicles, response.data!]);
+          resetForm();
+          setShowForm(false);
+        } else {
+          setError(response.error || 'Failed to create vehicle');
         }
       }
-      resetForm();
-      setShowForm(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving vehicle:', error);
+      setError(error.message || 'An unexpected error occurred');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -117,6 +135,7 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ onClose }) => {
       notes: ''
     });
     setEditingVehicle(null);
+    setError(null);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -233,6 +252,12 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ onClose }) => {
                   Cancel
                 </button>
               </div>
+
+              {error && (
+                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+                  <strong>Error:</strong> {error}
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -377,9 +402,10 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ onClose }) => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  disabled={submitting}
+                  className="flex-1 py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  {editingVehicle ? 'Update Vehicle' : 'Add Vehicle'}
+                  {submitting ? 'Saving...' : (editingVehicle ? 'Update Vehicle' : 'Add Vehicle')}
                 </button>
               </div>
             </form>
