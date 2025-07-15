@@ -1,9 +1,16 @@
 import React, { useState } from 'react';
+import BookingForm from './BookingForm';
+import VehicleManagement from './VehicleManagement';
 import { useAuth } from '../contexts/AuthContext';
+import { apiService } from '../services/api';
 
 const Dashboard: React.FC = () => {
-  const { user, logout } = useAuth();
+const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+  const [showBookingForm, setShowBookingForm] = useState(false);
+  const [showVehicleManager, setShowVehicleManager] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [bookingMessage, setBookingMessage] = useState('');
 
   const handleLogout = () => {
     logout();
@@ -88,7 +95,7 @@ const Dashboard: React.FC = () => {
         {/* Welcome Section */}
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome back, {user?.name}! 👋
+Welcome back, {user?.name}! 👋 {user?.role === 'user' && <button onClick={() => setShowBookingForm(true)} className="ml-4 btn-primary">Book a Service</button>}
           </h2>
           <p className="text-gray-600 text-lg">
             {user?.role === 'admin' && 'Manage your car wash business from here.'}
@@ -96,6 +103,44 @@ const Dashboard: React.FC = () => {
             {user?.role === 'worker' && 'Here are your tasks for today.'}
           </p>
         </div>
+
+{/* Vehicle Management */}
+        {showVehicleManager && (
+          <VehicleManagement 
+            onClose={() => setShowVehicleManager(false)}
+          />
+        )}
+
+        {/* Booking Form */}
+        {showBookingForm && (
+          <BookingForm
+            onSubmit={async (data) => {
+              setLoading(true);
+              try {
+                const response = await apiService.createBooking(data);
+                if (response.success) {
+                  setBookingMessage('Booking successful!');
+                  setShowBookingForm(false);
+                } else {
+                  setBookingMessage('Failed to create booking.');
+                }
+              } catch (error) {
+                console.error('Booking error:', error);
+                setBookingMessage('An error occurred while booking.');
+              } finally {
+                setLoading(false);
+              }
+            }}
+            onCancel={() => setShowBookingForm(false)}
+            isLoading={loading}
+          />
+        )}
+
+        {bookingMessage && (
+          <div className="mb-4">
+            <p className="text-green-600">{bookingMessage}</p>
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -119,7 +164,18 @@ const Dashboard: React.FC = () => {
           <h3 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {quickActions[user?.role as keyof typeof quickActions]?.map((action, index) => (
-              <div key={index} className="card card-hover cursor-pointer group">
+              <div 
+                key={index} 
+                className="card card-hover cursor-pointer group"
+                onClick={() => {
+                  if (action.title === 'Book Service') {
+                    setShowBookingForm(true);
+                  } else if (action.title === 'My Vehicles') {
+                    setShowVehicleManager(true);
+                  }
+                  // Add more actions as needed
+                }}
+              >
                 <div className="text-center">
                   <div className="text-3xl mb-3 group-hover:scale-110 transition-transform duration-300">
                     {action.icon}
