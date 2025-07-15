@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Car, Plus, MapPin, Calendar, Clock, CreditCard, Check, X } from 'lucide-react';
+import { Car, Plus, MapPin, Calendar, Clock, CreditCard, Check, X, Navigation } from 'lucide-react';
 import { apiService } from '../services/api';
 import { Vehicle } from '../types';
 
@@ -40,6 +40,7 @@ const BookingPage: React.FC = () => {
   const [showAddAddress, setShowAddAddress] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [detectingLocation, setDetectingLocation] = useState(false);
   
   const [bookingData, setBookingData] = useState<BookingData>({
     vehicle: null,
@@ -99,15 +100,9 @@ const BookingPage: React.FC = () => {
 
   const fetchAddresses = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/addresses', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setAddresses(data);
+      const response = await apiService.getAddresses();
+      if (response.success && response.data) {
+        setAddresses(response.data);
       }
     } catch (error) {
       console.error('Error fetching addresses:', error);
@@ -157,6 +152,70 @@ const BookingPage: React.FC = () => {
     }
   };
 
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      setError('Geolocation is not supported by this browser');
+      return;
+    }
+
+    setDetectingLocation(true);
+    setError('');
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          
+          // Use reverse geocoding to get address from coordinates
+          const response = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+          );
+          
+          if (response.ok) {
+            const data = await response.json();
+            
+            setNewAddress({
+              street: data.locality || '',
+              city: data.city || '',
+              state: data.principalSubdivision || '',
+              zipCode: data.postcode || '',
+              isDefault: false
+            });
+            
+            setError('');
+          } else {
+            setError('Failed to get address from location');
+          }
+        } catch (error) {
+          setError('Error getting address from location');
+        } finally {
+          setDetectingLocation(false);
+        }
+      },
+      (error) => {
+        setDetectingLocation(false);
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            setError('Location access denied. Please enable location services.');
+            break;
+          case error.POSITION_UNAVAILABLE:
+            setError('Location information is unavailable.');
+            break;
+          case error.TIMEOUT:
+            setError('Location request timed out.');
+            break;
+          default:
+            setError('An unknown error occurred while getting location.');
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000
+      }
+    );
+  };
+
   const handleAddAddress = async () => {
     if (!newAddress.street || !newAddress.city || !newAddress.state || !newAddress.zipCode) {
       setError('Please fill in all required address information');
@@ -165,20 +224,11 @@ const BookingPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/addresses', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(newAddress)
-      });
+      const response = await apiService.createAddress(newAddress);
       
-      if (response.ok) {
-        const address = await response.json();
-        setAddresses([...addresses, address]);
-        setBookingData({ ...bookingData, address });
+      if (response.success && response.data) {
+        setAddresses([...addresses, response.data]);
+        setBookingData({ ...bookingData, address: response.data });
         setNewAddress({
           street: '',
           city: '',
@@ -189,10 +239,10 @@ const BookingPage: React.FC = () => {
         setShowAddAddress(false);
         setError('');
       } else {
-        setError('Failed to add address');
+        setError(response.error || 'Failed to add address');
       }
-    } catch (error) {
-      setError('Error adding address');
+    } catch (error: any) {
+      setError(error.message || 'Error adding address');
     } finally {
       setLoading(false);
     }
@@ -469,7 +519,17 @@ const BookingPage: React.FC = () => {
 
             {showAddAddress && (
               <div className="mt-6 p-6 border rounded-lg bg-gray-50">
-                <h3 className="text-lg font-semibold mb-4">Add New Address</h3>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold">Add New Address</h3>
+                  <button
+                    onClick={handleDetectLocation}
+                    disabled={detectingLocation}
+                    className="flex items-center px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Navigation className="mr-2" size={16} />
+                    {detectingLocation ? 'Detecting...' : 'Use My Location'}
+                  </button>
+                </div>
                 <div className="grid grid-cols-1 gap-4">
                   <input
                     type="text"

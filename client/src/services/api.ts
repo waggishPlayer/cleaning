@@ -82,6 +82,42 @@ class ApiService {
     return response.data;
   }
 
+  // Address endpoints
+  async getAddresses(): Promise<ApiResponse<any[]>> {
+    const response: AxiosResponse<ApiResponse<any[]>> = await this.api.get('/addresses');
+    return response.data;
+  }
+
+  async getAddress(id: string): Promise<ApiResponse<any>> {
+    const response: AxiosResponse<ApiResponse<any>> = await this.api.get(`/addresses/${id}`);
+    return response.data;
+  }
+
+  async createAddress(data: any): Promise<ApiResponse<any>> {
+    const response: AxiosResponse<ApiResponse<any>> = await this.api.post('/addresses', data);
+    return response.data;
+  }
+
+  async updateAddress(id: string, data: any): Promise<ApiResponse<any>> {
+    const response: AxiosResponse<ApiResponse<any>> = await this.api.put(`/addresses/${id}`, data);
+    return response.data;
+  }
+
+  async deleteAddress(id: string): Promise<ApiResponse<null>> {
+    const response: AxiosResponse<ApiResponse<null>> = await this.api.delete(`/addresses/${id}`);
+    return response.data;
+  }
+
+  async setDefaultAddress(id: string): Promise<ApiResponse<any>> {
+    const response: AxiosResponse<ApiResponse<any>> = await this.api.put(`/addresses/${id}/default`);
+    return response.data;
+  }
+
+  async getDefaultAddress(): Promise<ApiResponse<any>> {
+    const response: AxiosResponse<ApiResponse<any>> = await this.api.get('/addresses/default');
+    return response.data;
+  }
+
   // Vehicle endpoints
   async getVehicles(): Promise<ApiResponse<Vehicle[]>> {
     const response: AxiosResponse<ApiResponse<Vehicle[]>> = await this.api.get('/vehicles');
