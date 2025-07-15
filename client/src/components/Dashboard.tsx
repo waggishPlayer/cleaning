@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import BookingForm from './BookingForm';
 import VehicleManagement from './VehicleManagement';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,9 +11,57 @@ const { user, logout } = useAuth();
   const [showVehicleManager, setShowVehicleManager] = useState(false);
   const [loading, setLoading] = useState(false);
   const [bookingMessage, setBookingMessage] = useState('');
+  const [userStats, setUserStats] = useState({ bookings: 0, vehicles: 0, moneySaved: 0, nextBooking: 'None' });
+  const [recentVehicles, setRecentVehicles] = useState([]);
+  const [upcomingBookings, setUpcomingBookings] = useState([]);
 
   const handleLogout = () => {
     logout();
+  };
+
+  useEffect(() => {
+    if (user?.role === 'user') {
+      fetchUserData();
+    }
+  }, [user]);
+
+  const fetchUserData = async () => {
+    try {
+      // Fetch bookings
+      const bookingsResponse = await apiService.getBookings();
+      const bookings = bookingsResponse.success ? bookingsResponse.data : [];
+      
+      // Fetch vehicles
+      const vehiclesResponse = await apiService.getVehicles();
+      const vehicles = vehiclesResponse.success ? vehiclesResponse.data : [];
+      
+      // Calculate user stats
+      const totalBookings = bookings.length;
+      const totalVehicles = vehicles.length;
+      const completedBookings = bookings.filter(b => b.status === 'completed');
+      const moneySaved = completedBookings.reduce((sum, booking) => sum + (booking.price * 0.1), 0); // 10% savings calculation
+      
+      // Find next booking
+      const futureBookings = bookings.filter(b => new Date(b.scheduledDate) > new Date() && b.status !== 'cancelled');
+      const nextBooking = futureBookings.length > 0 ? 
+        new Date(futureBookings[0].scheduledDate).toLocaleDateString() : 'None';
+      
+      setUserStats({
+        bookings: totalBookings,
+        vehicles: totalVehicles,
+        moneySaved: Math.round(moneySaved),
+        nextBooking
+      });
+      
+      // Set recent vehicles (limit to 2)
+      setRecentVehicles(vehicles.slice(0, 2));
+      
+      // Set upcoming bookings
+      setUpcomingBookings(futureBookings.slice(0, 3));
+      
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    }
   };
 
   const stats = {
@@ -24,10 +72,10 @@ const { user, logout } = useAuth();
       { label: 'Workers Active', value: '23', color: 'bg-orange-500', icon: '🧑‍💼' }
     ],
     user: [
-      { label: 'Total Bookings', value: '12', color: 'bg-blue-500', icon: '📅' },
-      { label: 'Vehicles', value: '3', color: 'bg-green-500', icon: '🚗' },
-      { label: 'Money Saved', value: '$240', color: 'bg-purple-500', icon: '💰' },
-      { label: 'Next Booking', value: 'Tomorrow', color: 'bg-orange-500', icon: '⏰' }
+      { label: 'Total Bookings', value: userStats.bookings.toString(), color: 'bg-blue-500', icon: '📅' },
+      { label: 'Vehicles', value: userStats.vehicles.toString(), color: 'bg-green-500', icon: '🚗' },
+      { label: 'Money Saved', value: `$${userStats.moneySaved}`, color: 'bg-purple-500', icon: '💰' },
+      { label: 'Next Booking', value: userStats.nextBooking, color: 'bg-orange-500', icon: '⏰' }
     ],
     worker: [
       { label: 'Jobs Today', value: '8', color: 'bg-blue-500', icon: '📋' },
@@ -107,7 +155,11 @@ Welcome back, {user?.name}! 👋 {user?.role === 'user' && <button onClick={() =
 {/* Vehicle Management */}
         {showVehicleManager && (
           <VehicleManagement 
-            onClose={() => setShowVehicleManager(false)}
+            onClose={() => {
+              setShowVehicleManager(false);
+              // Refresh data after vehicle management
+              fetchUserData();
+            }}
           />
         )}
 
@@ -121,6 +173,8 @@ Welcome back, {user?.name}! 👋 {user?.role === 'user' && <button onClick={() =
                 if (response.success) {
                   setBookingMessage('Booking successful!');
                   setShowBookingForm(false);
+                  // Refresh data after booking
+                  fetchUserData();
                 } else {
                   setBookingMessage('Failed to create booking.');
                 }
@@ -130,7 +184,7 @@ Welcome back, {user?.name}! 👋 {user?.role === 'user' && <button onClick={() =
               } finally {
                 setLoading(false);
               }
-            }}
+            }
             onCancel={() => setShowBookingForm(false)}
             isLoading={loading}
           />
@@ -245,20 +299,29 @@ Welcome back, {user?.name}! 👋 {user?.role === 'user' && <button onClick={() =
                   My Vehicles
                 </h3>
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-                    <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm">T</div>
-                    <div>
-                      <p className="font-medium text-gray-900">Tesla Model 3</p>
-                      <p className="text-sm text-gray-600">Last cleaned: 2 days ago</p>
+                  {recentVehicles.length > 0 ? (
+                    recentVehicles.map((vehicle: any, index: number) => (
+                      <div key={vehicle._id} className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm">
+                          {vehicle.make.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">{vehicle.year} {vehicle.make} {vehicle.model}</p>
+                          <p className="text-sm text-gray-600">{vehicle.licensePlate}</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-gray-500">No vehicles added yet.</p>
+                      <button
+                        onClick={() => setShowVehicleManager(true)}
+                        className="mt-2 text-blue-600 hover:text-blue-800"
+                      >
+                        Add your first vehicle
+                      </button>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm">H</div>
-                    <div>
-                      <p className="font-medium text-gray-900">Honda Civic</p>
-                      <p className="text-sm text-gray-600">Last cleaned: 1 week ago</p>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
               <div className="card">
@@ -267,11 +330,25 @@ Welcome back, {user?.name}! 👋 {user?.role === 'user' && <button onClick={() =
                   Upcoming Bookings
                 </h3>
                 <div className="space-y-3">
-                  <div className="p-3 bg-blue-50 rounded-lg">
-                    <p className="font-medium text-gray-900">Premium Wash</p>
-                    <p className="text-sm text-gray-600">Tomorrow at 2:00 PM</p>
-                    <p className="text-sm text-blue-600 font-medium">Tesla Model 3</p>
-                  </div>
+                  {upcomingBookings.length > 0 ? (
+                    upcomingBookings.map((booking: any) => (
+                      <div key={booking._id} className="p-3 bg-blue-50 rounded-lg">
+                        <p className="font-medium text-gray-900">{booking.serviceType.charAt(0).toUpperCase() + booking.serviceType.slice(1)} Wash</p>
+                        <p className="text-sm text-gray-600">{new Date(booking.scheduledDate).toLocaleDateString()} at {booking.scheduledTime}</p>
+                        <p className="text-sm text-blue-600 font-medium">{booking.vehicle?.make} {booking.vehicle?.model}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-gray-500">No upcoming bookings.</p>
+                      <button
+                        onClick={() => setShowBookingForm(true)}
+                        className="mt-2 text-blue-600 hover:text-blue-800"
+                      >
+                        Book your first service
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </>
