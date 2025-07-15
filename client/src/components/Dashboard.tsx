@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import BookingForm from './BookingForm';
+import { useNavigate } from 'react-router-dom';
 import VehicleManagement from './VehicleManagement';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
+import { Vehicle, Booking } from '../types';
 
 const Dashboard: React.FC = () => {
 const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
-  const [showBookingForm, setShowBookingForm] = useState(false);
+  const navigate = useNavigate();
   const [showVehicleManager, setShowVehicleManager] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [bookingMessage, setBookingMessage] = useState('');
   const [userStats, setUserStats] = useState({ bookings: 0, vehicles: 0, moneySaved: 0, nextBooking: 'None' });
-  const [recentVehicles, setRecentVehicles] = useState([]);
-  const [upcomingBookings, setUpcomingBookings] = useState([]);
+  const [recentVehicles, setRecentVehicles] = useState<Vehicle[]>([]);
+  const [upcomingBookings, setUpcomingBookings] = useState<Booking[]>([]);
 
   const handleLogout = () => {
     logout();
@@ -29,11 +28,11 @@ const { user, logout } = useAuth();
     try {
       // Fetch bookings
       const bookingsResponse = await apiService.getBookings();
-      const bookings = bookingsResponse.success ? bookingsResponse.data : [];
+      const bookings = bookingsResponse.success ? bookingsResponse.data || [] : [];
       
       // Fetch vehicles
       const vehiclesResponse = await apiService.getVehicles();
-      const vehicles = vehiclesResponse.success ? vehiclesResponse.data : [];
+      const vehicles = vehiclesResponse.success ? vehiclesResponse.data || [] : [];
       
       // Calculate user stats
       const totalBookings = bookings.length;
@@ -143,11 +142,11 @@ const { user, logout } = useAuth();
         {/* Welcome Section */}
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
-Welcome back, {user?.name}! 👋 {user?.role === 'user' && <button onClick={() => setShowBookingForm(true)} className="ml-4 btn-primary">Book a Service</button>}
+Hello, {user?.name}! 👋 {user?.role === 'user' && <button onClick={() => navigate('/booking')} className="ml-4 btn-primary">Book a Service</button>}
           </h2>
           <p className="text-gray-600 text-lg">
             {user?.role === 'admin' && 'Manage your car wash business from here.'}
-            {user?.role === 'user' && 'Ready to book your next car wash?'}
+            {user?.role === 'user' && 'Ready to book your car wash?'}
             {user?.role === 'worker' && 'Here are your tasks for today.'}
           </p>
         </div>
@@ -163,38 +162,6 @@ Welcome back, {user?.name}! 👋 {user?.role === 'user' && <button onClick={() =
           />
         )}
 
-        {/* Booking Form */}
-        {showBookingForm && (
-          <BookingForm
-            onSubmit={async (data) => {
-              setLoading(true);
-              try {
-                const response = await apiService.createBooking(data);
-                if (response.success) {
-                  setBookingMessage('Booking successful!');
-                  setShowBookingForm(false);
-                  // Refresh data after booking
-                  fetchUserData();
-                } else {
-                  setBookingMessage('Failed to create booking.');
-                }
-              } catch (error) {
-                console.error('Booking error:', error);
-                setBookingMessage('An error occurred while booking.');
-              } finally {
-                setLoading(false);
-              }
-            }
-            onCancel={() => setShowBookingForm(false)}
-            isLoading={loading}
-          />
-        )}
-
-        {bookingMessage && (
-          <div className="mb-4">
-            <p className="text-green-600">{bookingMessage}</p>
-          </div>
-        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -223,7 +190,7 @@ Welcome back, {user?.name}! 👋 {user?.role === 'user' && <button onClick={() =
                 className="card card-hover cursor-pointer group"
                 onClick={() => {
                   if (action.title === 'Book Service') {
-                    setShowBookingForm(true);
+                    navigate('/booking');
                   } else if (action.title === 'My Vehicles') {
                     setShowVehicleManager(true);
                   }
@@ -300,7 +267,7 @@ Welcome back, {user?.name}! 👋 {user?.role === 'user' && <button onClick={() =
                 </h3>
                 <div className="space-y-3">
                   {recentVehicles.length > 0 ? (
-                    recentVehicles.map((vehicle: any, index: number) => (
+                    recentVehicles.map((vehicle: Vehicle, index: number) => (
                       <div key={vehicle._id} className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
                         <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm">
                           {vehicle.make.charAt(0)}
@@ -331,18 +298,18 @@ Welcome back, {user?.name}! 👋 {user?.role === 'user' && <button onClick={() =
                 </h3>
                 <div className="space-y-3">
                   {upcomingBookings.length > 0 ? (
-                    upcomingBookings.map((booking: any) => (
+                    upcomingBookings.map((booking: Booking) => (
                       <div key={booking._id} className="p-3 bg-blue-50 rounded-lg">
                         <p className="font-medium text-gray-900">{booking.serviceType.charAt(0).toUpperCase() + booking.serviceType.slice(1)} Wash</p>
                         <p className="text-sm text-gray-600">{new Date(booking.scheduledDate).toLocaleDateString()} at {booking.scheduledTime}</p>
-                        <p className="text-sm text-blue-600 font-medium">{booking.vehicle?.make} {booking.vehicle?.model}</p>
+                        <p className="text-sm text-blue-600 font-medium">{(booking.vehicle as any)?.make} {(booking.vehicle as any)?.model}</p>
                       </div>
                     ))
                   ) : (
                     <div className="text-center py-4">
                       <p className="text-gray-500">No upcoming bookings.</p>
                       <button
-                        onClick={() => setShowBookingForm(true)}
+                      onClick={() => navigate('/booking') }
                         className="mt-2 text-blue-600 hover:text-blue-800"
                       >
                         Book your first service

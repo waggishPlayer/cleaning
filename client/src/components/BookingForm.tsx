@@ -27,10 +27,9 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onCancel, isLoading
   });
 
   const serviceTypes = [
-    { value: 'exterior', label: 'Exterior Wash', price: 25, description: 'Basic exterior cleaning with soap and water' },
-    { value: 'interior', label: 'Interior Cleaning', price: 35, description: 'Complete interior vacuuming and cleaning' },
-    { value: 'full-service', label: 'Full Service', price: 55, description: 'Complete interior and exterior cleaning' },
-    { value: 'premium', label: 'Premium Detail', price: 85, description: 'Premium detailing with wax and polish' }
+    { value: 'exterior', label: 'Exterior Wash', price: 99, description: '' },
+    { value: 'deep-wash', label: 'Deep Wash', price: 549, description: '' },
+    { value: 'premium', label: 'Premium Detailing', price: 599, description: 'deep cleaning plus polishing' }
   ];
 
   const timeSlots = [

@@ -5,6 +5,7 @@ import SplashScreen from './components/SplashScreen';
 import Login from './components/Login';
 import Register from './components/Register';
 import Dashboard from './components/Dashboard';
+import BookingPage from './components/BookingPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import LandingPage from './components/LandingPage';
 
@@ -28,6 +29,14 @@ const AppContent: React.FC = () => {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/booking" 
+          element={
+            <ProtectedRoute>
+              <BookingPage />
             </ProtectedRoute>
           } 
         />
