@@ -149,9 +149,9 @@ const LandingPage: React.FC = () => {
                   top: 16,
                   left: 16,
                   zIndex: 50,
-                  width: 120,
-                  height: 40,
-                  borderRadius: 16,
+                  width: 90,
+                  height: 32,
+                  borderRadius: 12,
                   background: 'rgba(0,0,0,0.0)',
                   boxShadow: '0 2px 24px 0 rgba(0,0,0,0.08)',
                   pointerEvents: 'none',
@@ -160,7 +160,7 @@ const LandingPage: React.FC = () => {
                 <img
                   src="/logo.png"
                   alt="Caarvo Logo"
-                  style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 16, background: 'transparent' }}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 12, background: 'transparent' }}
                 />
               </motion.div>
               <motion.button
@@ -222,10 +222,10 @@ const LandingPage: React.FC = () => {
               src="/logo.png"
               alt="Caarvo Logo"
               style={{
-                height: 'clamp(48px, 12vw, 90px)',
-                width: 'clamp(120px, 60vw, 340px)',
+                height: 48,
+                width: 120,
                 objectFit: 'contain',
-                borderRadius: 9999,
+                borderRadius: 12,
                 display: 'block',
                 background: 'transparent',
                 boxShadow: '0 2px 24px 0 rgba(0,0,0,0.08)',
@@ -273,7 +273,7 @@ const LandingPage: React.FC = () => {
               <img
                 src="/logo.png"
                 alt="Caarvo Logo"
-                style={{ width: 180, height: 60, objectFit: 'contain', borderRadius: 24, background: 'transparent', boxShadow: '0 2px 24px 0 rgba(0,0,0,0.08)' }}
+                style={{ width: 120, height: 40, objectFit: 'contain', borderRadius: 12, background: 'transparent', boxShadow: '0 2px 24px 0 rgba(0,0,0,0.08)' }}
               />
             </div>
             <div className="flex flex-col md:flex-row w-full max-w-7xl mx-auto items-center justify-center flex-1 px-4 md:px-0" style={{ gap: '2rem', marginTop: 0, marginBottom: 0, flexGrow: 1, minHeight: 0 }}>
