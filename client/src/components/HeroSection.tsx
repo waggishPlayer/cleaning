@@ -3,8 +3,8 @@ import React, { useState, useRef } from 'react';
 const CAR_SVG_PATH = '/car.svg';
 const DIRT_OVERLAY_URL = 'https://www.pngall.com/wp-content/uploads/5/Grunge-PNG-Image.png'; // transparent dirt overlay
 
-const HeroSection: React.FC<{ small?: boolean }> = ({ small }) => {
-  const [slider, setSlider] = useState(50); // percent clean
+const HeroSection: React.FC<{ small?: boolean; hideSlider?: boolean; initialSlider?: number }> = ({ small, hideSlider = false, initialSlider = 50 }) => {
+  const [slider, setSlider] = useState(initialSlider); // percent clean
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Dirty filter: sepia + brightness + contrast
@@ -82,38 +82,42 @@ const HeroSection: React.FC<{ small?: boolean }> = ({ small }) => {
         }}
         draggable={false}
       />
-      {/* Slider handle */}
-      <input
-        type="range"
-        min={0}
-        max={100}
-        value={slider}
-        onChange={handleSlider}
-        style={{
-          position: 'absolute',
-          left: 0,
-          bottom: '-2.5rem',
-          width: '100%',
-          zIndex: 4,
-          accentColor: '#c1ff72',
-          height: '2rem',
-        }}
-      />
-      {/* Slider indicator line */}
-      <div
-        style={{
-          position: 'absolute',
-          left: `calc(${slider}% - 2px)`,
-          top: 0,
-          width: '4px',
-          height: '100%',
-          background: 'linear-gradient(to bottom, #c1ff72, #00ddff)',
-          borderRadius: '2px',
-          zIndex: 5,
-          pointerEvents: 'none',
-          transition: 'left 0.2s',
-        }}
-      />
+      {/* Slider handle and indicator, only if not hidden */}
+      {!hideSlider && (
+        <>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={slider}
+            onChange={handleSlider}
+            style={{
+              position: 'absolute',
+              left: 0,
+              bottom: '-2.5rem',
+              width: '100%',
+              zIndex: 4,
+              accentColor: '#c1ff72',
+              height: '2rem',
+            }}
+          />
+          {/* Slider indicator line */}
+          <div
+            style={{
+              position: 'absolute',
+              left: `calc(${slider}% - 2px)`,
+              top: 0,
+              width: '4px',
+              height: '100%',
+              background: 'linear-gradient(to bottom, #c1ff72, #00ddff)',
+              borderRadius: '2px',
+              zIndex: 5,
+              pointerEvents: 'none',
+              transition: 'left 0.2s',
+            }}
+          />
+        </>
+      )}
     </div>
   );
 };
