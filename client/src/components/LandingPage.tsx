@@ -261,7 +261,7 @@ const LandingPage: React.FC = () => {
               Login
             </motion.button>
           )}
-        </div>
+            </div>
       )}
       {/* --- Main Content (unchanged) --- */}
       {isMobile ? (
@@ -305,8 +305,8 @@ const LandingPage: React.FC = () => {
                     Slide to clean the car!
                   </div>
                 )}
-              </div>
-            </div>
+          </div>
+        </div>
           </div>
           <div ref={howItWorksRef} style={{ minHeight: '100vh', scrollSnapAlign: 'start', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', background: 'black', paddingTop: 'clamp(120px, 22vw, 180px)' }}>
             <h2 style={{ color: '#c1ff72', fontSize: '2.5rem', fontWeight: 800, marginBottom: '2.5rem', letterSpacing: 0.5 }}>How It Works</h2>
@@ -385,8 +385,8 @@ const LandingPage: React.FC = () => {
                     <div className="flex flex-col justify-center items-center md:items-start text-center md:text-left mt-[8vh] md:mt-0" style={{ flex: 1, color: '#fff', maxWidth: 520, gap: '2rem' }}>
                       <h1 style={{ color: '#c1ff72', fontSize: '2.1rem', fontWeight: 800, marginBottom: 0, lineHeight: 1.08 }} className="md:text-5xl text-3xl">Get Started with Caarvo</h1>
                       <p style={{ color: '#00ddff', fontSize: '1.1rem', marginBottom: 0, lineHeight: 1.5 }} className="md:text-xl text-base">
-                        Professional vehicle cleaning services that come to you. Experience the ultimate in convenience, quality, and eco-friendly care.
-                      </p>
+                Professional vehicle cleaning services that come to you. Experience the ultimate in convenience, quality, and eco-friendly care.
+              </p>
                       <div className="flex gap-4 md:gap-6 mt-2">
                         <button className="btn-primary" style={{ minWidth: 120, fontSize: '1rem', padding: '0.8rem 1.5rem' }} onClick={() => navigate('/register')}>Get Started</button>
                       </div>

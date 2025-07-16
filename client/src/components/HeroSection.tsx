@@ -1,14 +1,11 @@
 import React, { useState, useRef } from 'react';
 
-const CAR_SVG_PATH = '/car.svg';
-const DIRT_OVERLAY_URL = 'https://www.pngall.com/wp-content/uploads/5/Grunge-PNG-Image.png'; // transparent dirt overlay
+const CLEAN_CAR_PATH = '/CleanCar.png';
+const DIRTY_CAR_PATH = '/dirtCar.png';
 
 const HeroSection: React.FC<{ small?: boolean; hideSlider?: boolean; initialSlider?: number }> = ({ small, hideSlider = false, initialSlider = 50 }) => {
   const [slider, setSlider] = useState(initialSlider); // percent clean
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // Dirty filter: sepia + brightness + contrast
-  const dirtyFilter = 'sepia(0.7) brightness(0.8) contrast(1.1)';
 
   // Dirt patch configs
   const mudColor = '#2d1c0b';
@@ -29,8 +26,8 @@ const HeroSection: React.FC<{ small?: boolean; hideSlider?: boolean; initialSlid
       ref={containerRef}
       style={{
         position: 'relative',
-        width: small ? 'min(60vw, 400px)' : 'min(90vw, 600px)',
-        height: small ? 'min(28vw, 180px)' : 'min(40vw, 260px)',
+        width: small ? 'min(80vw, 500px)' : 'min(98vw, 800px)',
+        height: small ? 'min(35vw, 220px)' : 'min(50vw, 400px)',
         margin: small ? '0 0 0 auto' : '0 auto',
         userSelect: 'none',
         background: 'transparent',
@@ -39,7 +36,7 @@ const HeroSection: React.FC<{ small?: boolean; hideSlider?: boolean; initialSlid
       {/* Dirty side (left) */}
       {slider > 0 && (
         <img
-          src={CAR_SVG_PATH}
+          src={DIRTY_CAR_PATH}
           alt="Dirty Car"
           style={{
             position: 'absolute',
@@ -48,7 +45,6 @@ const HeroSection: React.FC<{ small?: boolean; hideSlider?: boolean; initialSlid
             width: '100%',
             height: '100%',
             objectFit: 'contain',
-            filter: dirtyFilter,
             clipPath: `inset(0 ${100 - slider}% 0 0)`,
             transition: 'clip-path 0.2s',
             zIndex: 1,
@@ -61,7 +57,7 @@ const HeroSection: React.FC<{ small?: boolean; hideSlider?: boolean; initialSlid
       {/* Clean side (right) */}
       {slider < 100 && (
         <img
-          src={CAR_SVG_PATH}
+          src={CLEAN_CAR_PATH}
           alt="Clean Car"
           style={{
             position: 'absolute',
