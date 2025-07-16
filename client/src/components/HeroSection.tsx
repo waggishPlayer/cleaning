@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 
-const CLEAN_CAR_PATH = '/CleanCar.png';
+const CLEAN_CAR_PATH = '/cleanCar.png';
 const DIRTY_CAR_PATH = '/dirtCar.png';
 
 const HeroSection: React.FC<{ small?: boolean; hideSlider?: boolean; initialSlider?: number }> = ({ small, hideSlider = false, initialSlider = 50 }) => {
