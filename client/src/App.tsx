@@ -9,6 +9,7 @@ import Dashboard from './components/Dashboard';
 import BookingPage from './components/BookingPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import LandingPage from './components/LandingPage';
+import Staff from './components/Staff';
 
 const AppContent: React.FC = () => {
   const { loading } = useAuth();
@@ -25,7 +26,7 @@ const AppContent: React.FC = () => {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<UserRegister />} />
-        <Route path="/staff" element={<StaffLogin />} />
+        <Route path="/staff" element={<Staff />} />
         <Route 
           path="/dashboard/*" 
           element={
