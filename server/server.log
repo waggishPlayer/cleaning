@@ -1,0 +1,14 @@
+(node:13428) [MONGOOSE] Warning: Duplicate schema index on {"phone":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Server running on port 5001
+Connected to MongoDB Atlas: ac-b7cn8m7-shard-00-00.lsqhy28.mongodb.net
+Comparing password: {
+  candidatePassword: 'sandesh29',
+  storedHash: '$2a$12$Vuowdtgb0jCNg5eWLpSEF.b0gSyCs5xSfzngRq7taDsbqy9WpW5Y2',
+  result: true
+}
+Comparing password: {
+  candidatePassword: 'sandesh29',
+  storedHash: '$2a$12$Vuowdtgb0jCNg5eWLpSEF.b0gSyCs5xSfzngRq7taDsbqy9WpW5Y2',
+  result: true
+}

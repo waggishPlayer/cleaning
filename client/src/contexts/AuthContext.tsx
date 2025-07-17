@@ -10,6 +10,7 @@ interface AuthContextType {
   register: (data: any) => Promise<void>;
   logout: () => void;
   updateUser: (data: Partial<User>) => Promise<void>;
+  setUserAndToken: (user: User, token: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,39 +33,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const initializeAuth = async () => {
-      const storedToken = localStorage.getItem('token');
-      const storedUser = localStorage.getItem('user');
-
-      if (storedToken && storedUser) {
-        try {
-          setToken(storedToken);
-          setUser(JSON.parse(storedUser));
-          
-          // Verify token is still valid
-          const response = await apiService.getProfile();
-          if (response.success && response.data) {
-            setUser(response.data);
-            localStorage.setItem('user', JSON.stringify(response.data));
-          } else {
-            // Token is invalid, clear storage
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            setToken(null);
-            setUser(null);
-          }
-        } catch (error) {
-          console.error('Auth initialization error:', error);
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          setToken(null);
-          setUser(null);
-        }
-      }
-      setLoading(false);
-    };
-
-    initializeAuth();
+    const storedToken = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    if (storedToken && storedUser) {
+      setToken(storedToken);
+      setUser(JSON.parse(storedUser));
+    }
+    setLoading(false);
   }, []);
 
   const login = async (emailOrPhone: string, passwordOrOtp: string) => {
@@ -77,8 +52,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         response = await apiService.login({ email: emailOrPhone, password: passwordOrOtp });
       } else {
         // Phone login for users
-        // TODO: Implement phone + OTP login API
-        // For now, we'll simulate it
         response = await apiService.loginWithPhone({ phone: emailOrPhone, otp: passwordOrOtp });
       }
       
@@ -88,6 +61,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setToken(tokenData);
         localStorage.setItem('token', tokenData);
         localStorage.setItem('user', JSON.stringify(userData));
+        // Do NOT call getProfile here
       } else {
         throw new Error(response.message || 'Login failed');
       }
@@ -99,7 +73,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const register = async (data: any) => {
     try {
-      const response = await apiService.register(data);
+      let response;
+      if (data.role === 'admin') {
+        response = await apiService.registerAdmin({
+          name: data.name,
+          email: data.email,
+          password: data.password,
+          phone: data.phone,
+          address: {
+            street: data.street || (data.address && data.address.street) || '',
+            city: data.city || (data.address && data.address.city) || '',
+            state: data.state || (data.address && data.address.state) || '',
+            zipCode: data.zipCode || (data.address && data.address.zipCode) || '',
+          },
+          isActive: typeof data.isActive === 'boolean' ? data.isActive : true,
+        });
+      } else {
+        response = await apiService.register(data);
+      }
       if (response.success && response.data) {
         const { user: userData, token: tokenData } = response.data;
         setUser(userData);
@@ -137,6 +128,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const setUserAndToken = (userObj: User, tokenStr: string) => {
+    setUser(userObj);
+    setToken(tokenStr);
+    localStorage.setItem('user', JSON.stringify(userObj));
+    localStorage.setItem('token', tokenStr);
+  };
+
   const value: AuthContextType = {
     user,
     token,
@@ -145,6 +143,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     logout,
     updateUser,
+    setUserAndToken,
   };
 
   return (

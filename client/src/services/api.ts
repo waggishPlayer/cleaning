@@ -13,7 +13,7 @@ import {
   Analytics
 } from '../types';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
 class ApiService {
   private api: AxiosInstance;
@@ -47,7 +47,9 @@ class ApiService {
         if (error.response?.status === 401) {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
-          window.location.href = '/login';
+          // Do not force a page reload or redirect here. Let the app handle it.
+          // Optionally, you can add a console.log here for debugging:
+          // console.log('API 401 Unauthorized:', error.config?.url);
         }
         return Promise.reject(error);
       }
@@ -77,6 +79,14 @@ class ApiService {
 
   async register(data: RegisterData): Promise<AuthResponse> {
     const response: AxiosResponse<AuthResponse> = await this.api.post('/auth/register', data);
+    return response.data;
+  }
+
+  async registerAdmin(data: { name: string; email: string; password: string; phone: string; address: { street: string; city: string; state: string; zipCode: string }; isActive?: boolean }): Promise<any> {
+    // Use plain axios to avoid sending Authorization header
+    const response: AxiosResponse<any> = await axios.post(`${API_BASE_URL}/admin/register-admin`, data, {
+      headers: { 'Content-Type': 'application/json' }
+    });
     return response.data;
   }
 
@@ -177,17 +187,26 @@ class ApiService {
   }
 
   async updateBookingStatus(id: string, status: string, notes?: string): Promise<ApiResponse<Booking>> {
-    const response: AxiosResponse<ApiResponse<Booking>> = await this.api.put(`/bookings/${id}/status`, {
+    // Use admin endpoint for status updates
+    const response: AxiosResponse<ApiResponse<Booking>> = await this.api.put(`/admin/bookings/${id}/status`, {
       status,
       notes,
     });
     return response.data;
   }
 
-  async cancelBooking(id: string, reason: string): Promise<ApiResponse<null>> {
-    const response: AxiosResponse<ApiResponse<null>> = await this.api.put(`/bookings/${id}/cancel`, {
-      reason,
-    });
+  async assignBooking(bookingId: string, workerId: string): Promise<ApiResponse<null>> {
+    const response: AxiosResponse<ApiResponse<null>> = await this.api.put(`/admin/bookings/${bookingId}/assign`, { workerId });
+    return response.data;
+  }
+
+  async markBookingComplete(bookingId: string): Promise<ApiResponse<null>> {
+    const response: AxiosResponse<ApiResponse<null>> = await this.api.put(`/admin/bookings/${bookingId}/complete`);
+    return response.data;
+  }
+
+  async cancelBooking(id: string, reason?: string): Promise<ApiResponse<null>> {
+    const response: AxiosResponse<ApiResponse<null>> = await this.api.put(`/bookings/${id}/cancel`, { reason });
     return response.data;
   }
 
@@ -208,39 +227,26 @@ class ApiService {
   }
 
   // Admin endpoints
-  async getUsers(params?: { role?: string; page?: number; limit?: number }): Promise<ApiResponse<User[]>> {
+  async registerWorker(data: { name: string; email: string; password: string; phone: string; address: { street: string; city: string; state: string; zipCode: string }; isActive?: boolean }): Promise<any> {
+    // Use plain axios to avoid sending Authorization header
+    const response: AxiosResponse<any> = await axios.post(`${API_BASE_URL}/admin/register-worker`, data, {
+      headers: { 'Content-Type': 'application/json' }
+    });
+    return response.data;
+  }
+
+  async getAllUsers(params?: { role?: string; page?: number; limit?: number }): Promise<ApiResponse<User[]>> {
     const response: AxiosResponse<ApiResponse<User[]>> = await this.api.get('/admin/users', { params });
     return response.data;
   }
 
-  async getWorkers(): Promise<ApiResponse<User[]>> {
-    const response: AxiosResponse<ApiResponse<User[]>> = await this.api.get('/admin/workers');
-    return response.data;
-  }
-
-  async getAdminBookings(params?: { status?: string; page?: number; limit?: number }): Promise<ApiResponse<Booking[]>> {
+  async getAllBookings(params?: { status?: string; page?: number; limit?: number }): Promise<ApiResponse<Booking[]>> {
     const response: AxiosResponse<ApiResponse<Booking[]>> = await this.api.get('/admin/bookings', { params });
     return response.data;
   }
 
-  async assignBooking(bookingId: string, workerId: string): Promise<ApiResponse<Booking>> {
-    const response: AxiosResponse<ApiResponse<Booking>> = await this.api.put(`/admin/bookings/${bookingId}/assign`, {
-      workerId,
-    });
-    return response.data;
-  }
-
-  async updateUserStatus(userId: string, isActive: boolean): Promise<ApiResponse<User>> {
-    const response: AxiosResponse<ApiResponse<User>> = await this.api.put(`/admin/users/${userId}/status`, {
-      isActive,
-    });
-    return response.data;
-  }
-
-  async updateWorkerAvailability(workerId: string, isAvailable: boolean): Promise<ApiResponse<User>> {
-    const response: AxiosResponse<ApiResponse<User>> = await this.api.put(`/admin/workers/${workerId}/availability`, {
-      isAvailable,
-    });
+  async getDashboardAnalytics(period: string = 'month'): Promise<ApiResponse<Analytics>> {
+    const response: AxiosResponse<ApiResponse<Analytics>> = await this.api.get('/admin/analytics', { params: { period } });
     return response.data;
   }
 
@@ -248,6 +254,11 @@ class ApiService {
     const response: AxiosResponse<ApiResponse<Analytics>> = await this.api.get('/admin/analytics', {
       params: { period },
     });
+    return response.data;
+  }
+
+  async updateUser(id: string, data: Partial<User>): Promise<ApiResponse<User>> {
+    const response: AxiosResponse<ApiResponse<User>> = await this.api.put(`/admin/users/${id}`, data);
     return response.data;
   }
 

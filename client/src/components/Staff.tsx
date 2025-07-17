@@ -1,12 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const Staff: React.FC = () => {
   const navigate = useNavigate();
+  const { user, login: authLogin, register: authRegister } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loginAttempted, setLoginAttempted] = useState(false);
+  const [roleToggle, setRoleToggle] = useState<'admin' | 'worker'>('admin');
+  const [showRegister, setShowRegister] = useState(false);
+  // Admin registration fields
+  const [adminName, setAdminName] = useState('');
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [registerError, setRegisterError] = useState('');
+  const [registerSuccess, setRegisterSuccess] = useState('');
+  const [registerLoading, setRegisterLoading] = useState(false);
+
+  useEffect(() => {
+    if (!loginAttempted) return;
+    if (loading) return;
+    if (user) {
+      console.log('Logged in user:', user);
+      if (roleToggle === 'admin' && user.role === 'admin') {
+        navigate('/admin/dashboard');
+      } else if (roleToggle === 'worker' && user.role === 'worker') {
+        navigate('/worker/dashboard');
+      } else {
+        setError(`You are not authorized as a ${roleToggle}. Please check your credentials or contact your administrator.`);
+        // Clear the invalid login
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
+      setLoginAttempted(false);
+      setLoading(false);
+    } else if (!loading && loginAttempted) {
+      setError('Invalid email or password.');
+      setLoginAttempted(false);
+      setLoading(false);
+    }
+  }, [user, loginAttempted, loading, navigate, roleToggle]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,15 +52,36 @@ const Staff: React.FC = () => {
       return;
     }
     setLoading(true);
-    // Mock login logic: if email includes 'admin', treat as admin
-    setTimeout(() => {
+    try {
+      await authLogin(email, password);
+      setLoginAttempted(true);
+    } catch (err) {
       setLoading(false);
-      if (email.toLowerCase().includes('admin')) {
-        navigate('/admin');
-      } else {
-        navigate('/worker-dashboard');
-      }
-    }, 900);
+      setError('Invalid email or password.');
+    }
+  };
+
+  // Admin registration logic
+  const handleAdminRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegisterError('');
+    setRegisterSuccess('');
+    if (!adminName || !adminEmail || !adminPassword) {
+      setRegisterError('Please fill all fields.');
+      return;
+    }
+    setRegisterLoading(true);
+    try {
+      await authRegister({ name: adminName, email: adminEmail, password: adminPassword, role: 'admin', phone: '' });
+      setRegisterSuccess('Admin registered successfully! You can now log in as admin.');
+      setAdminName('');
+      setAdminEmail('');
+      setAdminPassword('');
+    } catch (err: any) {
+      setRegisterError(err.message || 'Registration failed.');
+    } finally {
+      setRegisterLoading(false);
+    }
   };
 
   return (
@@ -35,6 +92,26 @@ const Staff: React.FC = () => {
           <img src="/logo.png" alt="Caarvo Logo" style={{ width: 140, height: 48, objectFit: 'contain', borderRadius: 24, background: 'transparent', display: 'block' }} />
         </div>
       </div>
+      {/* Toggle bar */}
+      <div className="flex justify-center mb-6">
+        <div className="flex rounded-full overflow-hidden border-2 border-[#00ddff]">
+          <button
+            type="button"
+            className={`px-6 py-2 font-bold text-lg transition-colors duration-200 ${roleToggle === 'admin' ? 'bg-[#00ddff] text-black' : 'bg-black text-[#c1ff72]'}`}
+            onClick={() => setRoleToggle('admin')}
+          >
+            Admin
+          </button>
+          <button
+            type="button"
+            className={`px-6 py-2 font-bold text-lg transition-colors duration-200 ${roleToggle === 'worker' ? 'bg-[#00ddff] text-black' : 'bg-black text-[#c1ff72]'}`}
+            onClick={() => setRoleToggle('worker')}
+          >
+            Worker
+          </button>
+        </div>
+      </div>
+      {/* Staff Login Form */}
       <form
         onSubmit={handleSubmit}
         className="w-full max-w-md bg-[#18181b] rounded-2xl shadow-xl p-8 flex flex-col gap-6"
@@ -65,6 +142,7 @@ const Staff: React.FC = () => {
             style={{ fontSize: 16 }}
           />
         </div>
+        {loading && <div className="text-blue-400 text-center font-semibold">Logging in, please wait...</div>}
         {error && <div className="text-red-500 text-center font-semibold bg-red-50 rounded-lg py-2 px-3 border border-red-200">{error}</div>}
         <button
           type="submit"

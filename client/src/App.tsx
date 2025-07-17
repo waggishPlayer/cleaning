@@ -10,6 +10,8 @@ import BookingPage from './components/BookingPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import LandingPage from './components/LandingPage';
 import Staff from './components/Staff';
+import AdminDashboard from './components/Dashboard';
+import WorkerDashboard from './components/WorkerDashboard';
 
 const AppContent: React.FC = () => {
   const { loading } = useAuth();
@@ -38,16 +40,16 @@ const AppContent: React.FC = () => {
         <Route 
           path="/admin/dashboard" 
           element={
-            <ProtectedRoute>
-              <Dashboard />
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminDashboard />
             </ProtectedRoute>
           } 
         />
         <Route 
           path="/worker/dashboard" 
           element={
-            <ProtectedRoute>
-              <Dashboard />
+            <ProtectedRoute allowedRoles={['worker']}>
+              <WorkerDashboard />
             </ProtectedRoute>
           } 
         />

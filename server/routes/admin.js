@@ -1,10 +1,83 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Booking = require('../models/Booking');
 const Vehicle = require('../models/Vehicle');
 const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
+
+// Admin registration endpoint (public)
+router.post('/register-admin', async (req, res) => {
+  try {
+    let { name, email, password, phone, address } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ success: false, message: 'All fields are required' });
+    }
+    const existing = await User.findOne({ email });
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'Email already exists' });
+    }
+    // If phone is not provided, generate a unique dummy phone
+    if (!phone) {
+      // Generate a random 10-digit phone number starting with 99
+      let unique = false;
+      while (!unique) {
+        phone = '99' + Math.floor(10000000 + Math.random() * 90000000).toString();
+        const phoneExists = await User.findOne({ phone });
+        if (!phoneExists) unique = true;
+      }
+    }
+    const user = await User.create({
+      name,
+      email,
+      password: password, // Let the pre-save hook handle hashing
+      phone,
+      role: 'admin',
+      isActive: true,
+      address: address || undefined
+    });
+    console.log('Admin registered:', { email: user.email, phone: user.phone });
+    res.json({ success: true, message: 'Admin registered', data: { user } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Admin can register a worker
+router.post('/register-worker', async (req, res) => {
+  try {
+    let { name, email, password, phone, address } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ success: false, message: 'All fields are required' });
+    }
+    const existing = await User.findOne({ email });
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'Email already exists' });
+    }
+    // If phone is not provided, generate a unique dummy phone
+    if (!phone) {
+      let unique = false;
+      while (!unique) {
+        phone = '98' + Math.floor(10000000 + Math.random() * 90000000).toString();
+        const phoneExists = await User.findOne({ phone });
+        if (!phoneExists) unique = true;
+      }
+    }
+    const user = await User.create({
+      name,
+      email,
+      password: password, // Let the pre-save hook handle hashing
+      phone,
+      role: 'worker',
+      isActive: true,
+      address: address || undefined
+    });
+    res.json({ success: true, message: 'Worker registered', data: { user } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 // All routes require admin role
 router.use(protect, authorize('admin'));
@@ -167,6 +240,118 @@ router.put('/bookings/:id/assign', async (req, res) => {
       message: 'Error assigning booking',
       error: error.message
     });
+  }
+});
+
+// @desc    Mark booking as completed (admin or worker)
+// @route   PUT /api/admin/bookings/:id/complete
+// @access  Private/Admin
+router.put('/bookings/:id/complete', async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+    if (booking.status !== 'assigned' && booking.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: 'Booking is not in a state that can be completed'
+      });
+    }
+    booking.status = 'completed';
+    booking.completedAt = new Date();
+    await booking.save();
+    const updatedBooking = await Booking.findById(booking._id)
+      .populate('customer', 'name email phone')
+      .populate('vehicle', 'make model year licensePlate')
+      .populate('worker', 'name phone');
+    res.json({
+      success: true,
+      message: 'Booking marked as completed',
+      data: updatedBooking
+    });
+  } catch (error) {
+    console.error('Mark booking complete error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error marking booking as completed',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Update booking status (admin only)
+// @route   PUT /api/admin/bookings/:id/status
+// @access  Private/Admin
+router.put('/bookings/:id/status', async (req, res) => {
+  try {
+    const { status, notes } = req.body;
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+    booking.status = status;
+    if (notes) {
+      booking.notes = booking.notes || {};
+      booking.notes.admin = notes;
+    }
+    if (status === 'completed') {
+      booking.completedAt = new Date();
+    } else if (status === 'cancelled') {
+      booking.cancelledAt = new Date();
+      booking.cancelledBy = 'admin';
+    } else {
+      booking.completedAt = undefined;
+      booking.cancelledAt = undefined;
+      booking.cancelledBy = undefined;
+    }
+    await booking.save();
+    const updatedBooking = await Booking.findById(booking._id)
+      .populate('customer', 'name email phone')
+      .populate('vehicle', 'make model year licensePlate')
+      .populate('worker', 'name phone');
+    res.json({
+      success: true,
+      message: 'Booking status updated',
+      data: updatedBooking
+    });
+  } catch (error) {
+    console.error('Admin update booking status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating booking status',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Update user (admin only)
+// @route   PUT /api/admin/users/:id
+// @access  Private/Admin
+router.put('/users/:id', async (req, res) => {
+  try {
+    const { name, email, phone, role, isActive, address } = req.body;
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    if (name !== undefined) user.name = name;
+    if (email !== undefined) user.email = email;
+    if (phone !== undefined) user.phone = phone;
+    if (role !== undefined) user.role = role;
+    if (isActive !== undefined) user.isActive = isActive;
+    if (address !== undefined) user.address = address;
+    await user.save();
+    res.json({ success: true, message: 'User updated', data: user });
+  } catch (error) {
+    console.error('Admin update user error:', error);
+    res.status(500).json({ success: false, message: 'Error updating user', error: error.message });
   }
 });
 

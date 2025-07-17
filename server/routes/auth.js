@@ -55,12 +55,79 @@ router.post('/verify-otp', async (req, res) => {
   }
 });
 
+// Email/password login
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: 'Email and password are required' });
+    }
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user || !user.password) {
+      return res.status(401).json({ success: false, message: 'Incorrect email or password' });
+    }
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Incorrect email or password' });
+    }
+    // Generate token
+    const token = require('jsonwebtoken').sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRE || '7d' }
+    );
+    res.json({
+      success: true,
+      message: 'Login successful',
+      data: { user: user.toJSON(), token }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// Phone/OTP login
+router.post('/login-phone', async (req, res) => {
+  try {
+    const { phone, otp } = req.body;
+    if (!phone || !otp) {
+      return res.status(400).json({ success: false, message: 'Phone and OTP are required' });
+    }
+    
+    // Find and verify OTP
+    const otpDoc = await OTP.findOne({ phone, otp, verified: false }).sort({ createdAt: -1 });
+    if (!otpDoc) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
+    }
+    
+    // Mark OTP as verified
+    otpDoc.verified = true;
+    await otpDoc.save();
+    
+    // Find or create user by phone
+    const user = await User.findOrCreateByPhone(phone, { role: 'user' });
+    
+    // Generate token
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
+    
+    res.json({
+      success: true,
+      message: 'Login successful',
+      data: { user: user.toJSON(), token }
+    });
+  } catch (error) {
+    console.error('Phone login error:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
 // @desc    Get current user profile
 // @route   GET /api/auth/me
 // @access  Private
 router.get('/me', protect, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.user._id).select('-password');
     
     res.json({
       success: true,

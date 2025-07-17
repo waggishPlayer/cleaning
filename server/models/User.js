@@ -27,7 +27,7 @@ const userSchema = new mongoose.Schema({
   },
   phone: {
     type: String,
-    required: [true, 'Phone number is required'],
+    // required: [true, 'Phone number is required'], // Make phone optional
     unique: true, // Enforce unique phone for all users
     trim: true
   },
