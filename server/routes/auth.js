@@ -7,10 +7,23 @@ const jwt = require('jsonwebtoken');
 
 const router = express.Router();
 
+// Twilio configuration - only initialize if credentials are provided
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
-const twilioClient = accountSid && authToken ? twilio(accountSid, authToken) : null;
 const twilioFrom = process.env.TWILIO_PHONE_NUMBER;
+
+let twilioClient = null;
+if (accountSid && authToken && accountSid.startsWith('AC') && authToken.length > 10) {
+  try {
+    twilioClient = twilio(accountSid, authToken);
+    console.log('Twilio client initialized successfully');
+  } catch (error) {
+    console.warn('Twilio initialization failed:', error.message);
+    twilioClient = null;
+  }
+} else {
+  console.log('Twilio credentials not provided or invalid - SMS functionality disabled');
+}
 
 // Send OTP
 router.post('/send-otp', async (req, res) => {
