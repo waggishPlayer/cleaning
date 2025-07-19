@@ -7,7 +7,8 @@ const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Admin registration endpoint (public)
+// Public routes (no authentication required)
+// Admin registration endpoint (public - allows first admin to be created)
 router.post('/register-admin', async (req, res) => {
   try {
     let { name, email, password, phone, address } = req.body;
@@ -44,8 +45,8 @@ router.post('/register-admin', async (req, res) => {
   }
 });
 
-// Admin can register a worker
-router.post('/register-worker', async (req, res) => {
+// Admin can register a worker (requires admin auth)
+router.post('/register-worker', protect, authorize('admin'), async (req, res) => {
   try {
     let { name, email, password, phone, address } = req.body;
     if (!name || !email || !password) {
@@ -79,13 +80,10 @@ router.post('/register-worker', async (req, res) => {
   }
 });
 
-// All routes require admin role
-router.use(protect, authorize('admin'));
-
 // @desc    Get all users
 // @route   GET /api/admin/users
 // @access  Private/Admin
-router.get('/users', async (req, res) => {
+router.get('/users', protect, authorize('admin'), async (req, res) => {
   try {
     const { role, page = 1, limit = 10 } = req.query;
     
@@ -121,7 +119,7 @@ router.get('/users', async (req, res) => {
 // @desc    Get all bookings
 // @route   GET /api/admin/bookings
 // @access  Private/Admin
-router.get('/bookings', async (req, res) => {
+router.get('/bookings', protect, authorize('admin'), async (req, res) => {
   try {
     const { status, page = 1, limit = 10 } = req.query;
     
@@ -159,7 +157,7 @@ router.get('/bookings', async (req, res) => {
 // @desc    Get all workers
 // @route   GET /api/admin/workers
 // @access  Private/Admin
-router.get('/workers', async (req, res) => {
+router.get('/workers', protect, authorize('admin'), async (req, res) => {
   try {
     const workers = await User.find({ role: 'worker' })
       .select('-password')
@@ -183,7 +181,7 @@ router.get('/workers', async (req, res) => {
 // @desc    Assign booking to worker
 // @route   PUT /api/admin/bookings/:id/assign
 // @access  Private/Admin
-router.put('/bookings/:id/assign', async (req, res) => {
+router.put('/bookings/:id/assign', protect, authorize('admin'), async (req, res) => {
   try {
     const { workerId } = req.body;
 
@@ -246,7 +244,7 @@ router.put('/bookings/:id/assign', async (req, res) => {
 // @desc    Mark booking as completed (admin or worker)
 // @route   PUT /api/admin/bookings/:id/complete
 // @access  Private/Admin
-router.put('/bookings/:id/complete', async (req, res) => {
+router.put('/bookings/:id/complete', protect, authorize('admin'), async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
     if (!booking) {
@@ -286,7 +284,7 @@ router.put('/bookings/:id/complete', async (req, res) => {
 // @desc    Update booking status (admin only)
 // @route   PUT /api/admin/bookings/:id/status
 // @access  Private/Admin
-router.put('/bookings/:id/status', async (req, res) => {
+router.put('/bookings/:id/status', protect, authorize('admin'), async (req, res) => {
   try {
     const { status, notes } = req.body;
     const booking = await Booking.findById(req.params.id);
@@ -334,7 +332,7 @@ router.put('/bookings/:id/status', async (req, res) => {
 // @desc    Update user (admin only)
 // @route   PUT /api/admin/users/:id
 // @access  Private/Admin
-router.put('/users/:id', async (req, res) => {
+router.put('/users/:id', protect, authorize('admin'), async (req, res) => {
   try {
     const { name, email, phone, role, isActive, address } = req.body;
     const user = await User.findById(req.params.id);
@@ -358,7 +356,7 @@ router.put('/users/:id', async (req, res) => {
 // @desc    Update user status
 // @route   PUT /api/admin/users/:id/status
 // @access  Private/Admin
-router.put('/users/:id/status', async (req, res) => {
+router.put('/users/:id/status', protect, authorize('admin'), async (req, res) => {
   try {
     const { isActive } = req.body;
 
@@ -393,7 +391,7 @@ router.put('/users/:id/status', async (req, res) => {
 // @desc    Update worker availability
 // @route   PUT /api/admin/workers/:id/availability
 // @access  Private/Admin
-router.put('/workers/:id/availability', async (req, res) => {
+router.put('/workers/:id/availability', protect, authorize('admin'), async (req, res) => {
   try {
     const { isAvailable } = req.body;
 
@@ -428,7 +426,7 @@ router.put('/workers/:id/availability', async (req, res) => {
 // @desc    Get analytics
 // @route   GET /api/admin/analytics
 // @access  Private/Admin
-router.get('/analytics', async (req, res) => {
+router.get('/analytics', protect, authorize('admin'), async (req, res) => {
   try {
     const { period = 'month' } = req.query;
     

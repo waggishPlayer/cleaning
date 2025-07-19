@@ -10,7 +10,7 @@ import BookingPage from './components/BookingPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import LandingPage from './components/LandingPage';
 import Staff from './components/Staff';
-import AdminDashboard from './components/Dashboard';
+import AdminDashboard from './components/AdminDashboard';
 import WorkerDashboard from './components/WorkerDashboard';
 
 const AppContent: React.FC = () => {

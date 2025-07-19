@@ -5,7 +5,12 @@ const dotenv = require('dotenv');
 const path = require('path');
 
 // Load environment variables
-dotenv.config({ path: './config.env' });
+const configFile = process.env.NODE_ENV === 'production' ? './config.prod.env' : './config.env';
+dotenv.config({ path: configFile });
+console.log(`Loading config from: ${configFile}`);
+console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
+console.log(`FRONTEND_URL: ${process.env.FRONTEND_URL}`);
+console.log(`API running on port: ${process.env.PORT || 5000}`);
 
 // Import routes
 const authRoutes = require('./routes/auth');
