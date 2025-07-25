@@ -34,6 +34,9 @@ module.exports = {
           800: '#6b21a8',
           900: '#581c87',
         },
+        black: '#000000',
+        lime: '#c1ff72',
+        customgrey: '#545454',
       },
       animation: {
         'float': 'float 3s ease-in-out infinite',

@@ -102,7 +102,7 @@
   }
   /* Enhanced Input Fields */
   .input-field {
-    @apply w-full px-4 py-3 border-2 border-gray-800 rounded-xl focus:outline-none focus:ring-4 focus:ring-lime-300/50 focus:border-lime-400 transition-all duration-300 bg-black/80 backdrop-blur-sm placeholder-gray-400 text-white;
+    @apply w-full px-4 py-3 border-2 border-gray-800 rounded-xl focus:outline-none focus:ring-4 focus:ring-lime/50 focus:border-lime transition-all duration-300 bg-black/80 backdrop-blur-sm placeholder-gray-400 text-white;
   }
   .input-field:focus {
     @apply shadow-lg transform scale-[1.02];

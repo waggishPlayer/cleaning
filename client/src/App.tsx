@@ -12,6 +12,9 @@ import LandingPage from './components/LandingPage';
 import Staff from './components/Staff';
 import AdminDashboard from './components/AdminDashboard';
 import WorkerDashboard from './components/WorkerDashboard';
+import PrivacyPolicy from './components/PrivacyPolicy';
+import TermsAndConditions from './components/TermsAndConditions';
+import RefundPolicy from './components/RefundPolicy';
 
 const AppContent: React.FC = () => {
   const { loading } = useAuth();
@@ -61,6 +64,9 @@ const AppContent: React.FC = () => {
             </ProtectedRoute>
           } 
         />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+        <Route path="/refund-policy" element={<RefundPolicy />} />
         <Route path="*" element={<LandingPage />} />
       </Routes>
     </Router>
