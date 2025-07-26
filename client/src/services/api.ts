@@ -83,6 +83,16 @@ class ApiService {
     return response.data;
   }
 
+  async registerUser(name: string, phone: string, password: string): Promise<AuthResponse> {
+    const response: AxiosResponse<AuthResponse> = await this.api.post('/auth/register-user', { name, phone, password });
+    return response.data;
+  }
+
+  async loginWithPassword(phone: string, password: string): Promise<AuthResponse> {
+    const response: AxiosResponse<AuthResponse> = await this.api.post('/auth/login-password', { phone, password });
+    return response.data;
+  }
+
   async registerAdmin(data: { name: string; email: string; password: string; phone: string; address: { street: string; city: string; state: string; zipCode: string }; isActive?: boolean }): Promise<any> {
     // Use plain axios to avoid sending Authorization header
     const response: AxiosResponse<any> = await axios.post(`${API_BASE_URL}/admin/register-admin`, data, {

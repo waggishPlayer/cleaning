@@ -11,7 +11,16 @@ const RefundPolicy: React.FC = () => {
       <div className="w-full h-2 bg-[color:#00ddff]"></div>
       <nav className="w-full flex justify-between items-center px-8 py-6">
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
-          <img src="/Caarvo no back 2.png" alt="Caarvo Logo" className="h-8 w-auto" />
+          <img 
+            src="/Caarvo no back 2.png" 
+            alt="Caarvo Logo" 
+            className="h-[40px] sm:h-[56px] w-auto"
+            style={{
+              filter: 'drop-shadow(0 0 5px rgba(255,255,255,0.6))',
+              maxHeight: '40px',
+              maxWidth: '100%'
+            }}
+          />
         </div>
         <button 
           onClick={() => navigate('/')} 

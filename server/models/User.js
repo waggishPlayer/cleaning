@@ -17,7 +17,7 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: function() { return this.role === 'worker' || this.role === 'admin'; },
+    required: false, // Make password optional for OTP-based users
     minlength: [6, 'Password must be at least 6 characters']
   },
   role: {
@@ -83,15 +83,10 @@ userSchema.pre('save', async function(next) {
   }
 });
 
-// Validation: customers cannot have email/password
+// Validation: customers cannot have email (unless they're being upgraded to workers/admins)
 userSchema.pre('validate', function(next) {
-  if (this.role === 'user') {
-    if (this.email) {
-      this.invalidate('email', 'Customers cannot register with email');
-    }
-    if (this.password) {
-      this.invalidate('password', 'Customers cannot register with password');
-    }
+  if (this.role === 'user' && this.email) {
+    this.invalidate('email', 'Regular users cannot have email addresses');
   }
   next();
 });

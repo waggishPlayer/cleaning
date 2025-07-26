@@ -4,11 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import { apiService } from '../services/api';
 
 const Register: React.FC = () => {
-  const [currentStep, setCurrentStep] = useState(1); // 1: Phone+Name, 2: OTP
+  const [currentStep, setCurrentStep] = useState(1); // 1: Name+Phone, 2: OTP, 3: Password
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     phone: '',
     otp: '',
+    password: '',
+    confirmPassword: '',
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState(false);
@@ -59,19 +62,40 @@ const Register: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const validateName = () => {
+  const validateNames = () => {
     const newErrors: { [key: string]: string } = {};
-    if (!formData.name.trim()) {
-      newErrors.name = 'Full name is required';
-    } else if (formData.name.trim().length < 2) {
-      newErrors.name = 'Name must be at least 2 characters';
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = 'First name is required';
+    } else if (formData.firstName.trim().length < 2) {
+      newErrors.firstName = 'First name must be at least 2 characters';
+    }
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = 'Last name is required';
+    } else if (formData.lastName.trim().length < 2) {
+      newErrors.lastName = 'Last name must be at least 2 characters';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validatePassword = () => {
+    const newErrors: { [key: string]: string } = {};
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
+    }
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password';
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSendOTP = async () => {
-    if (!validateName() || !validatePhone()) return;
+    if (!validateNames() || !validatePhone()) return;
     setLoading(true);
     setGeneralError('');
     try {
@@ -91,7 +115,7 @@ const Register: React.FC = () => {
     }
   };
 
-  const handleVerifyOTPAndRegister = async () => {
+  const handleVerifyOTP = async () => {
     if (!validateOTP()) return;
     setLoading(true);
     setGeneralError('');
@@ -101,12 +125,35 @@ const Register: React.FC = () => {
       // Verify OTP
       const response = await apiService.verifyOTP(fullPhone, formData.otp);
       if (response.success) {
-        // Register user with phone-based authentication
-        await register({ name: formData.name, phone: fullPhone, role: 'user' });
-        navigate('/dashboard');
+        // Move to password setup step
+        setCurrentStep(3);
       } else {
-        setGeneralError(response.message || 'Invalid OTP');
+        setGeneralError(response.message || 'Invalid OTP'); 
       }
+    } catch (error: any) {
+      setGeneralError(error.response?.data?.message || error.message || 'OTP verification failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCompleteRegistration = async () => {
+    if (!validatePassword()) return;
+    setLoading(true);
+    setGeneralError('');
+    try {
+      const cleanPhone = formData.phone.replace(/\D/g, '');
+      const fullPhone = `+91${cleanPhone}`;
+      const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`;
+      
+      // Register user with name, phone, and password
+      await register({ 
+        name: fullName, 
+        phone: fullPhone, 
+        password: formData.password,
+        role: 'user' 
+      });
+      navigate('/dashboard');
     } catch (error: any) {
       setGeneralError(error.response?.data?.message || error.message || 'Registration failed');
     } finally {
@@ -157,31 +204,60 @@ const Register: React.FC = () => {
     if (currentStep === 1) {
       return (
         <div className="space-y-6">
+          <img
+            src="/Caarvo no back 2.png"
+            alt="Caarvo Logo"
+            className="w-2/3 max-w-md mx-auto mb-1 mt-0"
+            style={{ objectFit: 'contain', filter: 'drop-shadow(0 0 5px rgba(255,255,255,0.6))' }}
+          />
           <div className="text-center">
-            <h2 className="text-3xl font-extrabold gradient-text">Join SparkleWash!</h2>
-            <p className="mt-2 text-gray-600 text-lg">Create your account to get started</p>
+            <p className="text-gray-600 text-lg">Create your account to get started</p>
           </div>
-          <div>
-            <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
-            <input
-              id="name"
-              name="name"
-              type="text"
-              autoComplete="name"
-              required
-              className={`input-field ${errors.name ? 'error' : ''}`}
-              placeholder="Enter your full name"
-              value={formData.name}
-              onChange={handleChange}
-            />
-            {errors.name && (
-              <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                {errors.name}
-              </p>
-            )}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="firstName" className="block text-sm font-semibold text-gray-700 mb-2">First Name</label>
+              <input
+                id="firstName"
+                name="firstName"
+                type="text"
+                autoComplete="given-name"
+                required
+                className={`input-field ${errors.firstName ? 'error' : ''}`}
+                placeholder="First name"
+                value={formData.firstName}
+                onChange={handleChange}
+              />
+              {errors.firstName && (
+                <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {errors.firstName}
+                </p>
+              )}
+            </div>
+            <div>
+              <label htmlFor="lastName" className="block text-sm font-semibold text-gray-700 mb-2">Last Name</label>
+              <input
+                id="lastName"
+                name="lastName"
+                type="text"
+                autoComplete="family-name"
+                required
+                className={`input-field ${errors.lastName ? 'error' : ''}`}
+                placeholder="Last name"
+                value={formData.lastName}
+                onChange={handleChange}
+              />
+              {errors.lastName && (
+                <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {errors.lastName}
+                </p>
+              )}
+            </div>
           </div>
           <div>
             <label htmlFor="phone" className="block text-sm font-semibold text-gray-700 mb-2">Mobile Number</label>
@@ -270,7 +346,7 @@ const Register: React.FC = () => {
               type="button"
               disabled={loading}
               className="btn-primary flex-1 flex justify-center items-center py-4 text-lg font-semibold"
-              onClick={handleVerifyOTPAndRegister}
+              onClick={handleVerifyOTP}
             >
               {loading ? (
                 <>
@@ -280,9 +356,9 @@ const Register: React.FC = () => {
               ) : (
                 <>
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  Verify & Register
+                  Verify OTP
                 </>
               )}
             </button>
@@ -297,6 +373,81 @@ const Register: React.FC = () => {
           </div>
         </div>
       );
+    } else if (currentStep === 3) {
+      return (
+        <div className="space-y-6">
+          <div className="text-center">
+            <h2 className="text-3xl font-extrabold gradient-text">Set Your Password</h2>
+            <p className="mt-2 text-gray-600 text-lg">Choose a secure password for your account</p>
+          </div>
+          <div>
+            <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              required
+              className={`input-field ${errors.password ? 'error' : ''}`}
+              placeholder="Enter your password"
+              value={formData.password}
+              onChange={handleChange}
+            />
+            {errors.password && (
+              <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {errors.password}
+              </p>
+            )}
+          </div>
+          <div>
+            <label htmlFor="confirmPassword" className="block text-sm font-semibold text-gray-700 mb-2">Confirm Password</label>
+            <input
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              autoComplete="new-password"
+              required
+              className={`input-field ${errors.confirmPassword ? 'error' : ''}`}
+              placeholder="Confirm your password"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+            />
+            {errors.confirmPassword && (
+              <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {errors.confirmPassword}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-col sm:flex-row gap-4 pt-6">
+            <button
+              type="button"
+              disabled={loading}
+              className="btn-primary flex-1 flex justify-center items-center py-4 text-lg font-semibold"
+              onClick={handleCompleteRegistration}
+            >
+              {loading ? (
+                <>
+                  <div className="loading-spinner mr-2"></div>
+                  Creating Account...
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                  </svg>
+                  Complete Registration
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      );
     }
     return null;
   };
@@ -304,13 +455,6 @@ const Register: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-black py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <div className="flex justify-center mb-6">
-            <div className="w-14 h-10 bg-black rounded-full overflow-hidden flex items-center justify-center shadow-lg">
-              <img src="/logo.png" alt="Caarvo Logo" className="h-8 w-auto object-contain" />
-            </div>
-          </div>
-        </div>
         <div className="card mt-8">
           <form className="space-y-6" onSubmit={e => e.preventDefault()}>
             {generalError && (

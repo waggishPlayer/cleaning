@@ -88,6 +88,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           },
           isActive: typeof data.isActive === 'boolean' ? data.isActive : true,
         });
+      } else if (data.role === 'user' && data.password) {
+        // New user registration with password
+        response = await apiService.registerUser(data.name, data.phone, data.password);
       } else {
         response = await apiService.register(data);
       }

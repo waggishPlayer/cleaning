@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import SplashScreen from './components/SplashScreen';
 import Login from './components/Login';
-import UserRegister from './components/UserRegister';
+import Register from './components/Register';
 import StaffLogin from './components/StaffLogin';
 import Dashboard from './components/Dashboard';
 import BookingPage from './components/BookingPage';
@@ -30,7 +30,7 @@ const AppContent: React.FC = () => {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<UserRegister />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/staff" element={<Staff />} />
         <Route 
           path="/dashboard/*" 

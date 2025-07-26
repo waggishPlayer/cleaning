@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -6,48 +6,54 @@ interface SplashScreenProps {
 
 const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   const [isVisible, setIsVisible] = useState(true);
-  const [zoomed, setZoomed] = useState(false);
-  const [fadeIn, setFadeIn] = useState(false);
-  const logoRef = useRef<HTMLDivElement>(null);
+  const [fadeToBlack, setFadeToBlack] = useState(false);
+
+  const slideInKeyframes = `@keyframes logoSlideIn {
+  0% { transform: translateX(-120vw); }
+  100% { transform: translateX(0); }
+}`;
 
   useEffect(() => {
-    setFadeIn(true); // Start fade-in
+    // Inject slide-in keyframes
+    const styleSheet = document.createElement('style');
+    styleSheet.type = 'text/css';
+    styleSheet.innerText = slideInKeyframes;
+    document.head.appendChild(styleSheet);
+
+    // Wait 2s, then fade for 1s
     const fadeTimer = setTimeout(() => {
-      setZoomed(true); // Start zoom-out
+      setFadeToBlack(true);
       setTimeout(() => {
         setIsVisible(false);
-        setTimeout(onComplete, 400); // Wait for fade out
-      }, 800);
-    }, 1500);
-    return () => clearTimeout(fadeTimer);
+        setTimeout(onComplete, 300);
+      }, 1000); // fade duration
+    }, 2000); // still duration
+    return () => {
+      clearTimeout(fadeTimer);
+      document.head.removeChild(styleSheet);
+    };
   }, [onComplete]);
 
-  if (!isVisible) return null;
+  if (!isVisible) {
+    return null;
+  }
 
   return (
-    <div className={`fixed inset-0`} style={{ background: '#c1ff72' }}>
+    <div
+      className="fixed inset-0 flex items-center justify-center z-50 transition-opacity duration-500"
+      style={{ backgroundColor: '#00ddff' }}
+    >
+      <img
+        src="/Caarvo no back.png"
+        alt="Caarvo Logo"
+        className="w-2/3 max-w-md"
+        style={{ objectFit: 'contain', animation: 'logoSlideIn 1s cubic-bezier(0.4, 0, 0.2, 1) forwards' }}
+      />
+      {/* Black overlay for fade out */}
       <div
-        ref={logoRef}
-        className={`splash-logo transition-transform duration-700 ease-in-out ${fadeIn ? 'fade-in' : ''} ${zoomed ? 'zoom-out' : ''}`}
-        style={{ willChange: 'transform, opacity', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}
-      >
-        <img src="/logo.png" alt="Caarvo Logo" style={{ maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto' }} />
-      </div>
-      <style>{`
-        .splash-logo {
-          opacity: 0;
-          transform: scale(1);
-        }
-        .splash-logo.fade-in {
-          opacity: 1;
-          transition: opacity 0.7s cubic-bezier(0.4,0,0.2,1);
-        }
-        .splash-logo.zoom-out {
-          transform: scale(8);
-          opacity: 0;
-          transition: transform 0.7s cubic-bezier(0.4,0,0.2,1), opacity 0.7s cubic-bezier(0.4,0,0.2,1);
-        }
-      `}</style>
+        className={`fixed inset-0 pointer-events-none transition-opacity duration-1000 ${fadeToBlack ? 'opacity-100' : 'opacity-0'}`}
+        style={{ background: '#000', transition: 'opacity 1s', opacity: fadeToBlack ? 1 : 0 }}
+      />
     </div>
   );
 };
