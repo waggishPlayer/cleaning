@@ -42,10 +42,21 @@ const UserRegister: React.FC<UserRegisterProps> = () => {
       newErrors.phone = 'Phone number is required';
     } else {
       const cleanPhone = formData.phone.replace(/\D/g, '');
-      if (cleanPhone.length !== 10) {
-        newErrors.phone = 'Please enter a valid 10-digit Indian mobile number';
-      } else if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
-        newErrors.phone = 'Please enter a valid Indian mobile number starting with 6, 7, 8, or 9';
+      
+      // Handle different formats: 10 digits, or 12 digits starting with 91
+      if (cleanPhone.length === 10) {
+        // Standard 10-digit mobile number
+        if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+          newErrors.phone = 'Please enter a valid Indian mobile number starting with 6, 7, 8, or 9';
+        }
+      } else if (cleanPhone.length === 12 && cleanPhone.startsWith('91')) {
+        // 12-digit with 91 prefix
+        const mobileNumber = cleanPhone.substring(2);
+        if (!/^[6-9]\d{9}$/.test(mobileNumber)) {
+          newErrors.phone = 'Please enter a valid Indian mobile number starting with 91 followed by 6, 7, 8, or 9';
+        }
+      } else {
+        newErrors.phone = 'Please enter a valid 10-digit mobile number or 12-digit number starting with 91';
       }
     }
     
@@ -87,10 +98,21 @@ const UserRegister: React.FC<UserRegisterProps> = () => {
     
     try {
       const cleanPhone = formData.phone.replace(/\D/g, '');
-      const fullPhone = `+91${cleanPhone}`;
       
-      // Send OTP to the phone number
-      const response = await apiService.sendOTP(fullPhone);
+      // Format phone number properly:
+      // If user entered 10 digits: 9876543210 -> send +919876543210
+      // If user entered 12 digits: 919876543210 -> send +919876543210
+      let phoneToSend;
+      if (cleanPhone.length === 10) {
+        phoneToSend = `+91${cleanPhone}`;
+      } else if (cleanPhone.length === 12 && cleanPhone.startsWith('91')) {
+        phoneToSend = `+${cleanPhone}`; // +919876543210
+      } else {
+        throw new Error('Invalid phone number format');
+      }
+      
+      // Send WhatsApp OTP to the phone number
+      const response = await apiService.sendWhatsAppOTP(phoneToSend);
       
       if (response.success) {
         setOtpSent(true);
@@ -117,8 +139,8 @@ const UserRegister: React.FC<UserRegisterProps> = () => {
       const cleanPhone = formData.phone.replace(/\D/g, '');
       const fullPhone = `+91${cleanPhone}`;
       
-      // Verify OTP
-      const response = await apiService.verifyOTP(fullPhone, formData.otp);
+      // Verify WhatsApp OTP
+      const response = await apiService.verifyWhatsAppOTP(fullPhone, formData.otp);
       
       if (response.success) {
         setCurrentStep(3);
@@ -170,8 +192,8 @@ const UserRegister: React.FC<UserRegisterProps> = () => {
       const cleanPhone = formData.phone.replace(/\D/g, '');
       const fullPhone = `+91${cleanPhone}`;
       
-      // Resend OTP
-      const response = await apiService.sendOTP(fullPhone);
+      // Resend WhatsApp OTP
+      const response = await apiService.sendWhatsAppOTP(fullPhone);
       
       if (response.success) {
         startResendTimer();
@@ -221,7 +243,7 @@ const UserRegister: React.FC<UserRegisterProps> = () => {
                 Get Started
               </h2>
               <p className="mt-2 text-gray-600 text-lg">
-                Enter your phone number to create your account
+                Enter your phone number to receive OTP on WhatsApp
               </p>
             </div>
             
@@ -274,9 +296,9 @@ const UserRegister: React.FC<UserRegisterProps> = () => {
               ) : (
                 <>
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                   </svg>
-                  Send OTP
+                  Send WhatsApp OTP
                 </>
               )}
             </button>
@@ -291,7 +313,7 @@ const UserRegister: React.FC<UserRegisterProps> = () => {
                 Verify Phone Number
               </h2>
               <p className="mt-2 text-gray-600 text-lg">
-                Enter the 6-digit code sent to {formData.phone}
+                Enter the 6-digit code sent to your WhatsApp: {formData.phone}
               </p>
             </div>
             

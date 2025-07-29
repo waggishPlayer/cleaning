@@ -2,15 +2,28 @@ import React, { useState, useEffect } from 'react';
 import { Vehicle, BookingFormData } from '../types';
 import { apiService } from '../services/api';
 
+interface Address {
+  _id?: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+}
+
 interface BookingFormProps {
   onSubmit: (bookingData: BookingFormData) => void;
   onCancel: () => void;
   isLoading?: boolean;
+  hasUsedDemoWash?: boolean;
 }
 
-const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onCancel, isLoading }) => {
+const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onCancel, isLoading, hasUsedDemoWash }) => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loadingVehicles, setLoadingVehicles] = useState(true);
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [loadingAddresses, setLoadingAddresses] = useState(true);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>('');
+  const [addingNewAddress, setAddingNewAddress] = useState(false);
   const [formData, setFormData] = useState<BookingFormData>({
     vehicleId: '',
     serviceType: 'exterior',
@@ -26,11 +39,48 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onCancel, isLoading
     price: 0
   });
 
-  const serviceTypes = [
-    { value: 'exterior', label: 'Exterior Wash', price: 99, description: '' },
-    { value: 'deep-wash', label: 'Deep Wash', price: 549, description: '' },
-    { value: 'premium', label: 'Premium Detailing', price: 599, description: 'deep cleaning plus polishing' }
-  ];
+  // Helper to get seat count from vehicle size
+  const getSeatType = (size: Vehicle['size']) => {
+    if (size === 'large' || size === 'extra-large') return '7+';
+    return '5-';
+  };
+
+  // Service types and pricing logic
+  const getServiceTypes = () => {
+    const selectedVehicle = vehicles.find(v => v._id === formData.vehicleId);
+    const seatType = selectedVehicle ? getSeatType(selectedVehicle.size) : '5-';
+    const services = [
+      {
+        value: 'exterior',
+        label: 'Exterior Cleaning',
+        price: seatType === '7+' ? 349 : 299,
+        description: 'Exterior wash and clean',
+      },
+      {
+        value: 'deep-clean',
+        label: 'Deep Clean',
+        price: seatType === '7+' ? 749 : 649,
+        description: 'Full interior and exterior deep cleaning',
+      },
+      {
+        value: 'detail-clean',
+        label: 'Detail Clean',
+        price: seatType === '7+' ? 949 : 849,
+        description: 'Detailing, deep cleaning, and polish',
+      },
+    ];
+    if (!hasUsedDemoWash) {
+      services.unshift({
+        value: 'demo',
+        label: 'Demo Wash (First Time Only)',
+        price: 299,
+        description: 'Try our service at a special price! Only available once.',
+      });
+    }
+    return services;
+  };
+
+  const serviceTypes = getServiceTypes();
 
   const timeSlots = [
     '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'
@@ -38,6 +88,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onCancel, isLoading
 
   useEffect(() => {
     fetchVehicles();
+    fetchAddresses();
   }, []);
 
   const fetchVehicles = async () => {
@@ -52,6 +103,45 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onCancel, isLoading
       setLoadingVehicles(false);
     }
   };
+
+  const fetchAddresses = async () => {
+    setLoadingAddresses(true);
+    try {
+      const res = await apiService.getAddresses();
+      if (res.success && res.data) {
+        setAddresses(res.data);
+      }
+    } catch (err) {
+      // Optionally handle error
+    } finally {
+      setLoadingAddresses(false);
+    }
+  };
+
+  // When an address is selected, update formData.location
+  useEffect(() => {
+    if (selectedAddressId && selectedAddressId !== 'new') {
+      const addr = addresses.find(a => a._id === selectedAddressId);
+      if (addr) {
+        setFormData(prev => ({
+          ...prev,
+          location: {
+            address: addr.address,
+            city: addr.city,
+            state: addr.state,
+            zipCode: addr.zipCode
+          }
+        }));
+        setAddingNewAddress(false);
+      }
+    } else if (selectedAddressId === 'new') {
+      setAddingNewAddress(true);
+      setFormData(prev => ({
+        ...prev,
+        location: { address: '', city: '', state: '', zipCode: '' }
+      }));
+    }
+  }, [selectedAddressId, addresses]);
 
   const handleServiceTypeChange = (serviceType: string) => {
     const selectedService = serviceTypes.find(s => s.value === serviceType);
@@ -131,7 +221,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onCancel, isLoading
                 value={formData.vehicleId}
                 onChange={handleInputChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               >
                 <option value="">Select a vehicle</option>
                 {vehicles.map(vehicle => (
@@ -164,7 +254,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onCancel, isLoading
                       <h3 className="font-medium text-gray-900">{service.label}</h3>
                       <p className="text-sm text-gray-600 mt-1">{service.description}</p>
                     </div>
-                    <span className="text-lg font-bold text-blue-600">${service.price}</span>
+                    <span className="text-lg font-bold text-blue-600">₹{service.price}</span>
                   </div>
                 </div>
               ))}
@@ -184,7 +274,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onCancel, isLoading
                 onChange={handleInputChange}
                 min={minDate}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               />
             </div>
             <div>
@@ -196,7 +286,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onCancel, isLoading
                 value={formData.scheduledTime}
                 onChange={handleInputChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               >
                 <option value="">Select time</option>
                 {timeSlots.map(time => (
@@ -214,44 +304,75 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onCancel, isLoading
               Service Location *
             </label>
             <div className="space-y-4">
-              <input
-                type="text"
-                name="location.address"
-                value={formData.location.address}
-                onChange={handleInputChange}
-                placeholder="Street Address"
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <input
-                  type="text"
-                  name="location.city"
-                  value={formData.location.city}
-                  onChange={handleInputChange}
-                  placeholder="City"
+              {loadingAddresses ? (
+                <div>Loading addresses...</div>
+              ) : addresses.length > 0 && !addingNewAddress ? (
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  value={selectedAddressId}
+                  onChange={e => setSelectedAddressId(e.target.value)}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <input
-                  type="text"
-                  name="location.state"
-                  value={formData.location.state}
-                  onChange={handleInputChange}
-                  placeholder="State"
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <input
-                  type="text"
-                  name="location.zipCode"
-                  value={formData.location.zipCode}
-                  onChange={handleInputChange}
-                  placeholder="ZIP Code"
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+                >
+                  <option value="">Select an address</option>
+                  {addresses.map(addr => (
+                    <option key={addr._id} value={addr._id}>
+                      {addr.address}, {addr.city}, {addr.state} - {addr.zipCode}
+                    </option>
+                  ))}
+                  <option value="new">Add New Address</option>
+                </select>
+              ) : null}
+              {(addingNewAddress || addresses.length === 0) && (
+                <>
+                  <input
+                    type="text"
+                    name="location.address"
+                    value={formData.location.address}
+                    onChange={handleInputChange}
+                    placeholder="Street Address"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  />
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <input
+                      type="text"
+                      name="location.city"
+                      value={formData.location.city}
+                      onChange={handleInputChange}
+                      placeholder="City"
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    />
+                    <input
+                      type="text"
+                      name="location.state"
+                      value={formData.location.state}
+                      onChange={handleInputChange}
+                      placeholder="State"
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    />
+                    <input
+                      type="text"
+                      name="location.zipCode"
+                      value={formData.location.zipCode}
+                      onChange={handleInputChange}
+                      placeholder="ZIP Code"
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    />
+                  </div>
+                  {addresses.length > 0 && (
+                    <button
+                      type="button"
+                      className="text-blue-600 underline mt-2"
+                      onClick={() => { setAddingNewAddress(false); setSelectedAddressId(''); }}
+                    >
+                      Cancel Add New Address
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           </div>
 
@@ -266,7 +387,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onCancel, isLoading
               onChange={handleInputChange}
               rows={3}
               placeholder="Any special instructions or notes..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
             />
           </div>
 
@@ -274,7 +395,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onCancel, isLoading
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="flex justify-between items-center">
               <span className="text-lg font-medium text-gray-900">Total Price:</span>
-              <span className="text-2xl font-bold text-blue-600">${formData.price}</span>
+              <span className="text-2xl font-bold text-blue-600">₹{formData.price}</span>
             </div>
           </div>
 

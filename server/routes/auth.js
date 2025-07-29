@@ -7,38 +7,118 @@ const jwt = require('jsonwebtoken');
 
 const router = express.Router();
 
-// MSG91 configuration
+// MSG91 WhatsApp configuration
 const msg91ApiKey = process.env.MSG91_API_KEY;
-const msg91TemplateId = process.env.MSG91_TEMPLATE_ID;
-const msg91SenderId = process.env.MSG91_SENDER_ID;
+const msg91WhatsappTemplateId = process.env.MSG91_WHATSAPP_TEMPLATE_ID;
+const msg91WhatsappNumber = process.env.MSG91_WHATSAPP_NUMBER;
 
-// Function to send SMS via MSG91
-const sendSMSViaMSG91 = async (phone, otp) => {
+// Validate MSG91 configuration
+if (msg91ApiKey) {
+  console.log('✅ MSG91 WhatsApp service initialized');
+  console.log('📱 WhatsApp Business Number:', msg91WhatsappNumber || '919203240991 (default)');
+  if (msg91WhatsappTemplateId) {
+    console.log('📋 WhatsApp Template ID:', msg91WhatsappTemplateId);
+  } else {
+    console.log('⚠️  WhatsApp Template ID not set - using text messages');
+  }
+} else {
+  console.log('⚠️ MSG91 API Key missing - WhatsApp functionality disabled');
+}
+
+// Function to send WhatsApp OTP via MSG91 - Using the WORKING method
+const sendWhatsAppOTPViaMSG91 = async (phone, otp) => {
   try {
-    const url = 'https://control.msg91.com/api/v5/otp';
-    const payload = {
-      mobile: phone.replace('+91', ''), // Remove +91 prefix for MSG91
-      authkey: msg91ApiKey,
-      otp: otp
-    };
+    // Clean and format phone number for MSG91 WhatsApp (must be in international format)
+    let cleanPhone = phone.replace(/[^0-9]/g, ''); // Remove all non-digits
     
-    // Only add template_id if it's provided
-    if (msg91TemplateId) {
-      payload.template_id = msg91TemplateId;
+    // Handle different input formats for WhatsApp:
+    if (cleanPhone.startsWith('91') && cleanPhone.length === 12) {
+      // Already has 91 prefix: 919876543210
+      cleanPhone = cleanPhone;
+    } else if (cleanPhone.length === 10) {
+      // Just mobile number: 9876543210 -> add 91 prefix
+      cleanPhone = '91' + cleanPhone;
+    } else if (cleanPhone.startsWith('91') && cleanPhone.length > 12) {
+      // Multiple 91 prefixes or extra digits - take first 12
+      cleanPhone = cleanPhone.substring(0, 12);
+    } else {
+      // Invalid format - try to extract 10 digits after any 91
+      const match = cleanPhone.match(/91(\d{10})/);
+      if (match) {
+        cleanPhone = '91' + match[1];
+      } else {
+        // Last resort - if we have 10 digits anywhere
+        const digits = cleanPhone.match(/\d{10}/);
+        if (digits) {
+          cleanPhone = '91' + digits[0];
+        } else {
+          throw new Error('Invalid phone number format');
+        }
+      }
     }
     
-    console.log('📱 Sending SMS via MSG91 to:', phone);
-    const response = await axios.post(url, payload, {
-      headers: {
-        'Content-Type': 'application/json',
-        'authkey': msg91ApiKey
-      }
-    });
+    console.log('📱 Sending WhatsApp OTP via MSG91 to:', phone);
+    console.log('📋 Clean phone:', cleanPhone);
+    console.log('🔐 OTP:', otp);
     
-    console.log('✅ MSG91 SMS Response:', response.data);
-    return { success: true, data: response.data };
+    // Use the WORKING WhatsApp OTP method that was successfully tested
+    try {
+      console.log('🧪 Using Working WhatsApp Channel Method...');
+      console.log('📤 Request payload:', {
+        authkey: msg91ApiKey.substring(0, 10) + '...',
+        mobile: cleanPhone,
+        otp: otp,
+        sender: 'MSG91',
+        channel: 'whatsapp'
+      });
+      
+      const response = await axios.post('https://control.msg91.com/api/v5/otp', {
+        authkey: msg91ApiKey,
+        mobile: cleanPhone,
+        otp: otp,
+        sender: 'MSG91',
+        channel: 'whatsapp'
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        timeout: 15000
+      });
+      
+      console.log('✅ WhatsApp OTP SUCCESS:', response.data);
+      return { success: true, data: response.data, method: 'WhatsApp Channel OTP' };
+      
+    } catch (error) {
+      console.log('❌ WhatsApp OTP failed:', error.response?.data || error.message);
+      
+      // Fallback to SMS if WhatsApp fails
+      console.log('🔄 Falling back to SMS...');
+      
+      try {
+        const smsResponse = await axios.post('https://control.msg91.com/api/v5/otp', {
+          authkey: msg91ApiKey,
+          mobile: cleanPhone,
+          otp: otp,
+          sender: 'MSG91'
+          // No channel = SMS
+        }, {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          timeout: 15000
+        });
+        
+        console.log('✅ SMS OTP SUCCESS (fallback):', smsResponse.data);
+        return { success: true, data: smsResponse.data, method: 'SMS Fallback' };
+        
+      } catch (smsError) {
+        console.log('❌ SMS OTP also failed:', smsError.response?.data || smsError.message);
+        throw smsError;
+      }
+    }
+    
   } catch (error) {
-    console.error('❌ MSG91 SMS Error:', error.response?.data || error.message);
+    console.error('❌ All OTP methods failed:', error.response?.data || error.message);
     return { success: false, error: error.response?.data || error.message };
   }
 };
@@ -57,7 +137,8 @@ const verifyMSG91AccessToken = async (accessToken) => {
       headers: {
         'Content-Type': 'application/json',
         'authkey': msg91ApiKey
-      }
+      },
+      timeout: 15000 // 15 second timeout
     });
     
     console.log('✅ MSG91 Token Verification Response:', response.data);
@@ -94,27 +175,57 @@ if (msg91ApiKey) {
   console.log('⚠️ MSG91 API Key missing - SMS functionality disabled');
 }
 
-// Send OTP
+// Send OTP - Fixed version
 router.post('/send-otp', async (req, res) => {
   try {
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ success: false, message: 'Phone number is required' });
     
-    const canSend = await OTP.canSendOTP(phone);
-    if (!canSend) return res.status(429).json({ success: false, message: 'OTP already sent recently. Please wait before requesting again.' });
+    console.log('📞 OTP request for phone:', phone);
     
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    await OTP.create({ phone, otp });
+    console.log('🔐 Generated OTP:', otp);
     
-    // Try to send SMS via MSG91
-    if (msg91ApiKey) {
-      const smsResult = await sendSMSViaMSG91(phone, otp);
+    // Try database operations with timeout
+    let dbOperationSuccess = false;
+    try {
+      console.log('💾 Starting DB operations...');
+      const canSend = await Promise.race([
+        OTP.canSendOTP(phone),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('DB timeout')), 5000))
+      ]);
       
-      if (smsResult.success) {
-        console.log('✅ OTP sent via MSG91 to:', phone);
-        return res.json({ success: true, message: 'OTP sent successfully via SMS' });
+      if (!canSend) {
+        return res.status(429).json({ success: false, message: 'OTP already sent recently. Please wait before requesting again.' });
+      }
+      
+      await Promise.race([
+        OTP.create({ phone, otp }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('DB timeout')), 5000))
+      ]);
+      
+      dbOperationSuccess = true;
+      console.log('✅ DB operations completed');
+    } catch (dbError) {
+      console.warn('⚠️ DB operation failed:', dbError.message, '- continuing without DB storage');
+    }
+    
+    // Try to send WhatsApp OTP via MSG91
+    if (msg91ApiKey) {
+      console.log('📱 Attempting MSG91 WhatsApp OTP...');
+      const whatsappResult = await sendWhatsAppOTPViaMSG91(phone, otp);
+      
+      if (whatsappResult.success) {
+        console.log('✅ WhatsApp OTP sent via MSG91 to:', phone);
+        return res.json({ 
+          success: true, 
+          message: 'OTP sent successfully via WhatsApp',
+          dbStored: dbOperationSuccess,
+          method: whatsappResult.method,
+          data: whatsappResult.data
+        });
       } else {
-        console.error('❌ MSG91 failed, falling back to console mode');
+        console.error('❌ MSG91 WhatsApp OTP failed:', whatsappResult.error);
       }
     }
     
@@ -125,14 +236,27 @@ router.post('/send-otp', async (req, res) => {
     console.log('📋 Copy this OTP to your registration form');
     console.log('='.repeat(50));
     
+    // Store OTP in memory for development verification (if DB failed)
+    if (!dbOperationSuccess && process.env.NODE_ENV === 'development') {
+      // Store in a simple in-memory cache for development
+      if (!global.devOtpCache) global.devOtpCache = new Map();
+      global.devOtpCache.set(phone, {
+        otp,
+        timestamp: Date.now(),
+        expiresAt: Date.now() + (5 * 60 * 1000) // 5 minutes
+      });
+      console.log('💾 OTP stored in memory cache for development');
+    }
+    
     res.json({ 
       success: true, 
       message: 'OTP sent successfully (Check console for OTP)',
+      dbStored: dbOperationSuccess,
       ...(process.env.NODE_ENV === 'development' && { devOtp: otp })
     });
     
   } catch (error) {
-    console.error('Send OTP error:', error);
+    console.error('❌ Send OTP error:', error);
     res.status(500).json({ success: false, message: 'Error sending OTP', error: error.message });
   }
 });
@@ -144,6 +268,8 @@ router.post('/verify-otp', async (req, res) => {
     if (!phone || !otp) {
       return res.status(400).json({ success: false, message: 'Phone and OTP are required' });
     }
+
+    console.log('🔐 Verifying OTP for phone:', phone);
 
     // If access token is provided, verify it with MSG91
     if (accessToken && msg91ApiKey) {
@@ -170,23 +296,57 @@ router.post('/verify-otp', async (req, res) => {
       }
     }
 
-    // Check OTP in database (fallback or additional verification)
-    const otpDoc = await OTP.findOne({ phone, otp, verified: false }).sort({ createdAt: -1 });
-    if (!otpDoc) {
+    // Check OTP in database (with fallback for development)
+    let otpDoc = null;
+    let otpVerified = false;
+    
+    try {
+      // Try to find OTP in database
+      otpDoc = await Promise.race([
+        OTP.findOne({ phone, otp, verified: false }).sort({ createdAt: -1 }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('DB timeout')), 5000))
+      ]);
+      
+      if (otpDoc) {
+        // Mark OTP as verified
+        otpDoc.verified = true;
+        await otpDoc.save();
+        console.log('✅ OTP verified from database');
+        otpVerified = true;
+      }
+    } catch (dbError) {
+      console.warn('⚠️ DB verification failed:', dbError.message);
+    }
+    
+    // In development mode, allow OTP verification without DB if it matches the development OTP pattern
+    if (!otpVerified && process.env.NODE_ENV === 'development' && /^\d{6}$/.test(otp)) {
+      console.log('🔧 Development mode: allowing OTP verification without DB');
+      otpVerified = true;
+    }
+    
+    // Check in-memory cache for development mode
+    if (!otpVerified && process.env.NODE_ENV === 'development' && global.devOtpCache) {
+      const cachedOtp = global.devOtpCache.get(phone);
+      if (cachedOtp && cachedOtp.otp === otp && Date.now() < cachedOtp.expiresAt) {
+        console.log('🔧 Development mode: OTP verified from memory cache');
+        global.devOtpCache.delete(phone); // Remove from cache after use
+        otpVerified = true;
+      }
+    }
+    
+    if (!otpVerified) {
       return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
     }
 
-    // Mark OTP as verified
-    otpDoc.verified = true;
-    await otpDoc.save();
-
-    // Find or create user by phone
-    const user = await User.findOrCreateByPhone(phone, { role: 'user' });
-
-    // Generate token
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
-
-    res.json({ success: true, message: 'Authentication successful', data: { user, token } });
+    // OTP is verified - don't create user here, let registration form handle it
+    console.log('✅ Phone number verified successfully');
+    
+    res.json({ 
+      success: true, 
+      message: 'Phone number verified successfully. Please complete registration.',
+      phoneVerified: true,
+      phone: phone
+    });
   } catch (error) {
     console.error('Verify OTP error:', error);
     res.status(500).json({ success: false, message: 'Error verifying OTP', error: error.message });
@@ -286,11 +446,11 @@ router.get('/me', protect, async (req, res) => {
 // @access  Private
 router.put('/me', protect, async (req, res) => {
   try {
-    const { name, phone, address } = req.body;
+    const { name, phone, address, dateOfBirth, gender, profileImage } = req.body;
 
     const user = await User.findByIdAndUpdate(
       req.user._id,
-      { name, phone, address },
+      { name, phone, address, dateOfBirth, gender, profileImage },
       { new: true, runValidators: true }
     );
 
@@ -360,22 +520,34 @@ router.post('/register-user', async (req, res) => {
       });
     }
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ phone });
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: 'User with this phone number already exists'
-      });
-    }
+    console.log('📝 Registration request for:', phone, 'with name:', name);
 
-    // Create new user with password
-    const user = await User.create({
-      name: name.trim(),
-      phone,
-      password,
-      role: 'user'
-    });
+    // Check if user already exists (from previous OTP verification)
+    const existingUser = await User.findOne({ phone });
+    
+    let user;
+    if (existingUser) {
+      // Update existing user with proper name and password
+      console.log('👤 Updating existing user with new details');
+      existingUser.name = name.trim();
+      existingUser.password = password;
+      // Ensure email is undefined for regular users
+      existingUser.email = undefined;
+      user = await existingUser.save();
+      console.log('✅ User updated successfully');
+    } else {
+      // Create new user without email field
+      console.log('👤 Creating new user');
+      const userData = {
+        name: name.trim(),
+        phone,
+        password,
+        role: 'user'
+        // Explicitly NOT including email field
+      };
+      user = await User.create(userData);
+      console.log('✅ User created successfully');
+    }
 
     // Generate token
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
@@ -387,6 +559,22 @@ router.post('/register-user', async (req, res) => {
     });
   } catch (error) {
     console.error('User registration error:', error);
+    
+    // Handle specific MongoDB errors
+    if (error.code === 11000) {
+      if (error.keyPattern && error.keyPattern.phone) {
+        return res.status(400).json({
+          success: false,
+          message: 'A user with this phone number already exists'
+        });
+      } else if (error.keyPattern && error.keyPattern.email) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email address is already in use'
+        });
+      }
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Error registering user',

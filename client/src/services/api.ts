@@ -68,12 +68,12 @@ class ApiService {
     return response.data;
   }
 
-  async sendOTP(phone: string): Promise<ApiResponse<null>> {
+async sendWhatsAppOTP(phone: string): Promise<ApiResponse<null>> {
     const response: AxiosResponse<ApiResponse<null>> = await this.api.post('/auth/send-otp', { phone });
     return response.data;
   }
 
-  async verifyOTP(phone: string, otp: string): Promise<ApiResponse<null>> {
+  async verifyWhatsAppOTP(phone: string, otp: string): Promise<ApiResponse<null>> {
     const response: AxiosResponse<ApiResponse<null>> = await this.api.post('/auth/verify-otp', { phone, otp });
     return response.data;
   }

@@ -101,7 +101,7 @@ const Register: React.FC = () => {
     try {
       const cleanPhone = formData.phone.replace(/\D/g, '');
       const fullPhone = `+91${cleanPhone}`;
-      const response = await apiService.sendOTP(fullPhone);
+      const response = await apiService.sendWhatsAppOTP(fullPhone);
       if (response.success) {
         setCurrentStep(2);
         startResendTimer();
@@ -122,8 +122,8 @@ const Register: React.FC = () => {
     try {
       const cleanPhone = formData.phone.replace(/\D/g, '');
       const fullPhone = `+91${cleanPhone}`;
-      // Verify OTP
-      const response = await apiService.verifyOTP(fullPhone, formData.otp);
+      // Verify WhatsApp OTP
+      const response = await apiService.verifyWhatsAppOTP(fullPhone, formData.otp);
       if (response.success) {
         // Move to password setup step
         setCurrentStep(3);
@@ -168,7 +168,7 @@ const Register: React.FC = () => {
     try {
       const cleanPhone = formData.phone.replace(/\D/g, '');
       const fullPhone = `+91${cleanPhone}`;
-      const response = await apiService.sendOTP(fullPhone);
+      const response = await apiService.sendWhatsAppOTP(fullPhone);
       if (response.success) {
         startResendTimer();
       } else {
@@ -302,9 +302,9 @@ const Register: React.FC = () => {
               ) : (
                 <>
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                   </svg>
-                  Send OTP
+                  Send WhatsApp OTP
                 </>
               )}
             </button>
@@ -316,7 +316,7 @@ const Register: React.FC = () => {
         <div className="space-y-6">
           <div className="text-center">
             <h2 className="text-3xl font-extrabold gradient-text">Verify OTP</h2>
-            <p className="mt-2 text-gray-600 text-lg">Enter the OTP sent to your mobile number</p>
+            <p className="mt-2 text-gray-600 text-lg">Enter the OTP sent to your WhatsApp</p>
           </div>
           <div>
             <label htmlFor="otp" className="block text-sm font-semibold text-gray-700 mb-2">OTP</label>

@@ -4,7 +4,14 @@ const otpSchema = new mongoose.Schema({
   phone: {
     type: String,
     required: true,
-    match: [/^\+91[6-9]\d{9}$/, 'Please enter a valid Indian phone number starting with +91']
+    validate: {
+      validator: function(phone) {
+        // Accept +919876543210, 919876543210, or 9876543210 formats
+        const cleanPhone = phone.replace(/[^0-9]/g, '');
+        return /^(91)?[6-9]\d{9}$/.test(cleanPhone);
+      },
+      message: 'Please enter a valid Indian phone number'
+    }
   },
   otp: {
     type: String,

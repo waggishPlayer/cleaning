@@ -12,6 +12,8 @@ export interface User {
   };
   isActive: boolean;
   profileImage?: string;
+  dateOfBirth?: string;
+  gender?: 'male' | 'female' | 'other' | '';
   workerDetails?: {
     isAvailable: boolean;
     rating: number;

@@ -6,6 +6,9 @@ import Login from './components/Login';
 import Register from './components/Register';
 import StaffLogin from './components/StaffLogin';
 import Dashboard from './components/Dashboard';
+import UserDashboard from './components/UserDashboard';
+import VehicleManagementPage from './components/VehicleManagementPage';
+import AddressManagementPage from './components/AddressManagementPage';
 import BookingPage from './components/BookingPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import LandingPage from './components/LandingPage';
@@ -15,6 +18,27 @@ import WorkerDashboard from './components/WorkerDashboard';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import TermsAndConditions from './components/TermsAndConditions';
 import RefundPolicy from './components/RefundPolicy';
+import ProfileSettingsPage from './components/ProfileSettingsPage';
+import ResetPassword from './components/ResetPassword';
+
+// Role-based Dashboard Component
+const RoleBasedDashboard: React.FC = () => {
+  const { user } = useAuth();
+  
+  if (!user) {
+    return <div>Loading...</div>;
+  }
+  
+  switch (user.role) {
+    case 'admin':
+      return <AdminDashboard />;
+    case 'worker':
+      return <WorkerDashboard />;
+    case 'user':
+    default:
+      return <UserDashboard />;
+  }
+};
 
 const AppContent: React.FC = () => {
   const { loading } = useAuth();
@@ -36,7 +60,7 @@ const AppContent: React.FC = () => {
           path="/dashboard/*" 
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <RoleBasedDashboard />
             </ProtectedRoute>
           } 
         />
@@ -57,10 +81,35 @@ const AppContent: React.FC = () => {
           } 
         />
         <Route 
+          path="/vehicles" 
+          element={
+            <ProtectedRoute allowedRoles={['user']}>
+              <VehicleManagementPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/addresses" 
+          element={
+            <ProtectedRoute allowedRoles={['user']}>
+              <AddressManagementPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route path="/reset-password" element={<ProtectedRoute><ResetPassword /></ProtectedRoute>} />
+        <Route 
           path="/booking" 
           element={
             <ProtectedRoute>
               <BookingPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/profile-settings" 
+          element={
+            <ProtectedRoute allowedRoles={['user']}>
+              <ProfileSettingsPage />
             </ProtectedRoute>
           } 
         />

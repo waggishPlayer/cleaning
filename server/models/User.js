@@ -1,19 +1,12 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-const userSchema = new mongoose.Schema({
+// Create a base schema without email
+const baseUserSchema = {
   name: {
     type: String,
     required: [true, 'Name is required'],
     trim: true
-  },
-  email: {
-    type: String,
-    required: function() { return this.role === 'worker' || this.role === 'admin'; },
-    unique: false, // We'll enforce unique phone for customers
-    lowercase: true,
-    trim: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
   },
   password: {
     type: String,
@@ -27,9 +20,10 @@ const userSchema = new mongoose.Schema({
   },
   phone: {
     type: String,
-    // required: [true, 'Phone number is required'], // Make phone optional
+    required: [true, 'Phone number is required'], // Make phone required
     unique: true, // Enforce unique phone for all users
-    trim: true
+    trim: true,
+    index: true // Add index here instead of at the bottom
   },
   address: {
     street: String,
@@ -43,6 +37,15 @@ const userSchema = new mongoose.Schema({
   },
   profileImage: {
     type: String,
+    default: ''
+  },
+  dateOfBirth: {
+    type: String,
+    default: ''
+  },
+  gender: {
+    type: String,
+    enum: ['male', 'female', 'other', ''],
     default: ''
   },
   // Worker specific fields
@@ -66,8 +69,25 @@ const userSchema = new mongoose.Schema({
       enum: ['exterior', 'interior', 'full-service', 'premium']
     }]
   }
-}, {
+};
+
+// Create the schema
+const userSchema = new mongoose.Schema(baseUserSchema, {
   timestamps: true
+});
+
+// Add email field only for worker/admin roles
+userSchema.add({
+  email: {
+    type: String,
+    required: function() { return this.role === 'worker' || this.role === 'admin'; },
+    unique: false, // Remove unique constraint
+    sparse: true, // Allow multiple null values
+    lowercase: true,
+    trim: true,
+    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email'],
+    default: undefined // Use undefined instead of null to avoid duplicate key issues
+  }
 });
 
 // Hash password before saving
@@ -91,6 +111,18 @@ userSchema.pre('validate', function(next) {
   next();
 });
 
+// Pre-save middleware to remove email field for regular users
+userSchema.pre('save', function(next) {
+  if (this.role === 'user') {
+    // Remove email field completely for regular users
+    this.email = undefined;
+    // Also remove from the document to prevent any issues
+    this.$unset = this.$unset || {};
+    this.$unset.email = 1;
+  }
+  next();
+});
+
 // Compare password method
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
@@ -107,11 +139,15 @@ userSchema.methods.toJSON = function() {
 userSchema.statics.findOrCreateByPhone = async function(phone, defaults = {}) {
   let user = await this.findOne({ phone });
   if (!user) {
-    user = await this.create({ phone, ...defaults });
+    // Generate a default name from phone number if not provided
+    const defaultName = defaults.name || `User_${phone.replace(/[^0-9]/g, '').slice(-4)}`;
+    user = await this.create({ 
+      phone, 
+      name: defaultName,
+      ...defaults 
+    });
   }
   return user;
 };
-
-userSchema.index({ phone: 1 }, { unique: true });
 
 module.exports = mongoose.model('User', userSchema); 
