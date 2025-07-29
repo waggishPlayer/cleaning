@@ -28,32 +28,32 @@ if (msg91ApiKey) {
 // Function to send WhatsApp OTP via MSG91 - Using the WORKING method
 const sendWhatsAppOTPViaMSG91 = async (phone, otp) => {
   try {
-    // Clean and format phone number for MSG91 WhatsApp (must be in international format)
+    // Clean and format phone number for MSG91 WhatsApp (must be in international format with 91 prefix)
     let cleanPhone = phone.replace(/[^0-9]/g, ''); // Remove all non-digits
     
-    // Handle different input formats for WhatsApp:
-    if (cleanPhone.startsWith('91') && cleanPhone.length === 12) {
-      // Already has 91 prefix: 919876543210
-      cleanPhone = cleanPhone;
+    console.log('📞 Original phone input:', phone);
+    console.log('📞 Cleaned digits only:', cleanPhone);
+    
+    // Ensure phone number always has 91 prefix for Indian numbers
+    if (cleanPhone.startsWith('91')) {
+      // Remove any extra 91 prefixes and keep only one
+      cleanPhone = cleanPhone.replace(/^(91)+/, '91');
+      // Ensure it's exactly 12 digits (91 + 10 digit number)
+      if (cleanPhone.length > 12) {
+        cleanPhone = cleanPhone.substring(0, 12);
+      } else if (cleanPhone.length < 12) {
+        throw new Error('Invalid phone number: too short after 91 prefix');
+      }
     } else if (cleanPhone.length === 10) {
-      // Just mobile number: 9876543210 -> add 91 prefix
+      // 10 digit Indian mobile number - add 91 prefix
       cleanPhone = '91' + cleanPhone;
-    } else if (cleanPhone.startsWith('91') && cleanPhone.length > 12) {
-      // Multiple 91 prefixes or extra digits - take first 12
-      cleanPhone = cleanPhone.substring(0, 12);
     } else {
-      // Invalid format - try to extract 10 digits after any 91
-      const match = cleanPhone.match(/91(\d{10})/);
+      // Try to extract 10 digit number and add 91
+      const match = cleanPhone.match(/(\d{10})/);
       if (match) {
         cleanPhone = '91' + match[1];
       } else {
-        // Last resort - if we have 10 digits anywhere
-        const digits = cleanPhone.match(/\d{10}/);
-        if (digits) {
-          cleanPhone = '91' + digits[0];
-        } else {
-          throw new Error('Invalid phone number format');
-        }
+        throw new Error('Invalid phone number format - must be 10 digits');
       }
     }
     
@@ -61,9 +61,9 @@ const sendWhatsAppOTPViaMSG91 = async (phone, otp) => {
     console.log('📋 Clean phone:', cleanPhone);
     console.log('🔐 OTP:', otp);
     
-    // Use the WORKING WhatsApp OTP method that was successfully tested
+    // Use ONLY WhatsApp OTP method - NO SMS fallback
     try {
-      console.log('🧪 Using Working WhatsApp Channel Method...');
+      console.log('📱 Sending WhatsApp OTP ONLY...');
       console.log('📤 Request payload:', {
         authkey: msg91ApiKey.substring(0, 10) + '...',
         mobile: cleanPhone,
@@ -72,49 +72,72 @@ const sendWhatsAppOTPViaMSG91 = async (phone, otp) => {
         channel: 'whatsapp'
       });
       
-      const response = await axios.post('https://control.msg91.com/api/v5/otp', {
-        authkey: msg91ApiKey,
-        mobile: cleanPhone,
-        otp: otp,
-        sender: 'MSG91',
-        channel: 'whatsapp'
+      // Use MSG91 provided template format
+      const response = await axios.post('https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/', {
+        "integrated_number": msg91WhatsappNumber || "919203240991",
+        "content_type": "template",
+        "payload": {
+          "messaging_product": "whatsapp",
+          "type": "template",
+          "template": {
+            "name": "otp",
+            "language": {
+              "code": "en",
+              "policy": "deterministic"
+            },
+            "namespace": "b870bc3c_9fa6_4bf8_b4b2_82078187366a",
+            "to_and_components": [
+              {
+                "to": [cleanPhone],
+                "components": {
+                  "body_1": {
+                    "type": "text",
+                    "value": otp
+                  },
+                  "button_1": {
+                    "subtype": "url",
+                    "type": "text",
+                    "value": otp
+                  }
+                }
+              }
+            ]
+          }
+        }
       }, {
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'authkey': msg91ApiKey
         },
         timeout: 15000
       });
       
-      console.log('✅ WhatsApp OTP SUCCESS:', response.data);
-      return { success: true, data: response.data, method: 'WhatsApp Channel OTP' };
+      console.log('✅ WhatsApp OTP API SUCCESS:', response.data);
+      console.log('📋 Request ID:', response.data.request_id);
+      
+      // Even if API returns success, WhatsApp delivery may still fail
+      // This is a known issue with MSG91 WhatsApp service
+      if (response.data.type === 'success') {
+        return { 
+          success: true, 
+          data: response.data, 
+          method: 'WhatsApp OTP',
+          message: 'WhatsApp OTP sent successfully. If you don\'t receive it within 2-3 minutes, please contact support.'
+        };
+      } else {
+        throw new Error(`MSG91 API error: ${JSON.stringify(response.data)}`);
+      }
       
     } catch (error) {
-      console.log('❌ WhatsApp OTP failed:', error.response?.data || error.message);
+      console.log('❌ WhatsApp OTP API failed:', error.response?.data || error.message);
       
-      // Fallback to SMS if WhatsApp fails
-      console.log('🔄 Falling back to SMS...');
-      
-      try {
-        const smsResponse = await axios.post('https://control.msg91.com/api/v5/otp', {
-          authkey: msg91ApiKey,
-          mobile: cleanPhone,
-          otp: otp,
-          sender: 'MSG91'
-          // No channel = SMS
-        }, {
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          timeout: 15000
-        });
-        
-        console.log('✅ SMS OTP SUCCESS (fallback):', smsResponse.data);
-        return { success: true, data: smsResponse.data, method: 'SMS Fallback' };
-        
-      } catch (smsError) {
-        console.log('❌ SMS OTP also failed:', smsError.response?.data || smsError.message);
-        throw smsError;
-      }
+      // Return detailed error for WhatsApp issues
+      const errorMessage = error.response?.data || error.message;
+      return { 
+        success: false, 
+        error: errorMessage,
+        message: 'WhatsApp OTP delivery failed. Please check your WhatsApp settings or contact MSG91 support.' 
+      };
     }
     
   } catch (error) {
