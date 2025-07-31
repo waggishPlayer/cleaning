@@ -352,6 +352,13 @@ const LandingPage: React.FC = () => {
                   <span>Managed and developed by Ali Asghar Badshah</span>
                   <span className="hidden sm:inline">|</span>
                   <span>Designed by Sandesh Agarwal</span>
+                  <span className="hidden sm:inline">|</span>
+                  <button 
+                    onClick={() => navigate('/staff')}
+                    className="text-[color:#00ddff] hover:text-white transition-colors duration-200"
+                  >
+                    Staff Login
+                  </button>
                 </div>
               </div>
             </div>

@@ -146,10 +146,10 @@ const UserDashboard: React.FC = () => {
     <div className="min-h-screen bg-black text-white relative">
       {/* Modal for Booking */}
       {showBookingModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4">
           <div className="absolute inset-0 backdrop-blur-sm" />
-          <div className="relative z-10 max-w-2xl w-full mx-auto">
-            <div className="bg-[#18181b] rounded-xl shadow-lg p-8 border border-gray-800">
+          <div className="relative z-10 max-w-2xl w-full mx-auto max-h-[90vh] overflow-y-auto">
+            <div className="bg-[#18181b] rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 border border-gray-800">
               <BookingForm
                 onSubmit={handleBookingSubmit}
                 onCancel={handleBookingCancel}

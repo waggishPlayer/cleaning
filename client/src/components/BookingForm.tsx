@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Vehicle, BookingFormData } from '../types';
 import { apiService } from '../services/api';
+import { useNavigate } from 'react-router-dom';
 
 interface Address {
   _id?: string;
@@ -18,6 +19,7 @@ interface BookingFormProps {
 }
 
 const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onCancel, isLoading, hasUsedDemoWash }) => {
+  const navigate = useNavigate();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loadingVehicles, setLoadingVehicles] = useState(true);
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -181,13 +183,18 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onCancel, isLoading
   tomorrow.setDate(tomorrow.getDate() + 1);
   const minDate = tomorrow.toISOString().split('T')[0];
 
+  const handleAddVehicle = () => {
+    onCancel(); // Close the booking modal
+    navigate('/vehicles'); // Navigate to vehicles page
+  };
+
   return (
-    <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Book Cleaning Service</h2>
+    <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-4 sm:p-6">
+      <div className="flex justify-between items-center mb-4 sm:mb-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Book Cleaning Service</h2>
         <button
           onClick={onCancel}
-          className="text-gray-500 hover:text-gray-700 text-2xl"
+          className="text-gray-500 hover:text-gray-700 text-xl sm:text-2xl"
         >
           ×
         </button>
@@ -198,7 +205,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onCancel, isLoading
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           {/* Vehicle Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -209,7 +216,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onCancel, isLoading
                 <p className="text-gray-500">No vehicles found. Please add a vehicle first.</p>
                 <button
                   type="button"
-                  onClick={onCancel}
+                  onClick={handleAddVehicle}
                   className="mt-2 text-blue-600 hover:text-blue-800"
                 >
                   Add Vehicle
@@ -400,18 +407,18 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onCancel, isLoading
           </div>
 
           {/* Submit Buttons */}
-          <div className="flex gap-4">
+          <div className="flex gap-3 sm:gap-4 pt-2">
             <button
               type="button"
               onClick={onCancel}
-              className="flex-1 py-2 px-4 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
+              className="flex-1 py-2 px-3 sm:px-4 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 text-sm sm:text-base"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isLoading || vehicles.length === 0}
-              className="flex-1 py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 py-2 px-3 sm:px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
             >
               {isLoading ? 'Booking...' : 'Book Service'}
             </button>
