@@ -84,3 +84,4 @@ temp/
 # Build artifacts
 *.zip
 client/hostinger-build.zip
+caarvo-production-build.tar.gz

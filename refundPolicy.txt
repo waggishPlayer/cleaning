@@ -7,14 +7,14 @@ At Caarvo, we aim to offer a smooth and transparent service experience. This Ref
 •	No refund will be provided for cancellations made within 1 hour of the scheduled appointment.
  
 2. Cancellations by Caarvo
-•	If Caarvo is unable to provide the service for any reason, a full refund (if prepaid) will be processed within 7 business days.
+•	If Caarvo is unable to provide the service for any reason, a full refund (if prepaid) will be credited within 7 business days.
  
 3. Cash on Delivery (COD) Bookings
 •	COD bookings cancelled by us will not be charged.
 •	No refund is applicable on COD payments as no advance amount is collected.
  
 4. Refund Method
-•	Refunds (if applicable) are processed to the original payment method:
+•	Refunds (if applicable) are credited to the original payment method:
 o	UPI / Net Banking
 o	Credit/Debit Card
 o	Wallets
