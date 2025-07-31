@@ -57,7 +57,7 @@ const RefundPolicy: React.FC = () => {
             <div>
               <h2 className="text-2xl font-bold text-[color:#00ddff] mb-3">2. Cancellations by Caarvo</h2>
               <ul className="list-disc list-inside space-y-2 ml-4">
-                <li>If Caarvo is unable to provide the service for any reason, a full refund (if prepaid) will be processed within 7 business days.</li>
+                <li>If Caarvo is unable to provide the service for any reason, a full refund (if prepaid) will be credited within 7 business days.</li>
               </ul>
             </div>
 
@@ -71,7 +71,7 @@ const RefundPolicy: React.FC = () => {
 
             <div>
               <h2 className="text-2xl font-bold text-[color:#00ddff] mb-3">4. Refund Method</h2>
-              <p className="mb-2">Refunds (if applicable) are processed to the original payment method:</p>
+              <p className="mb-2">Refunds (if applicable) are credited to the original payment method:</p>
               <ul className="list-disc list-inside space-y-1 ml-4">
                 <li>UPI / Net Banking</li>
                 <li>Credit/Debit Card</li>

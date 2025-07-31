@@ -347,7 +347,7 @@ const LandingPage: React.FC = () => {
 
               {/* Bottom Row - Copyright & Credits */}
               <div className="flex flex-col sm:flex-row justify-between items-center text-customgrey text-xs">
-                <div>2025 Caarvo. All rights reserved.</div>
+                <div>2025 Caarvo by SRJ Groups. All rights reserved.</div>
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mt-2 sm:mt-0">
                   <span>Managed and developed by Ali Asghar Badshah</span>
                   <span className="hidden sm:inline">|</span>
