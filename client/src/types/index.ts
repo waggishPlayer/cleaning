@@ -61,7 +61,7 @@ export interface Booking {
   status: 'pending' | 'assigned' | 'en-route' | 'in-progress' | 'completed' | 'cancelled';
   price: number;
   paymentStatus: 'pending' | 'paid' | 'refunded' | 'completed' | 'failed';
-  paymentMethod?: 'cash' | 'razorpay' | 'phonepe';
+  paymentMethod?: 'cash' | 'phonepe';
   phonePeTransactionId?: string;
   phonePePaymentId?: string;
   notes?: {

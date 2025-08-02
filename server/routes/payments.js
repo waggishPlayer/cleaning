@@ -1,18 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { createOrder, verifyPayment, getPaymentStatus } = require('../controllers/paymentController');
 const { createPhonePeOrder, handlePhonePeCallback, handlePhonePeRedirect, checkPhonePeStatus, handlePhonePeWebhook } = require('../controllers/phonePeController');
 const { protect } = require('../middleware/auth');
-
-// Razorpay endpoints
-// Create Razorpay order
-router.post('/create-order', protect, createOrder);
-
-// Verify payment
-router.post('/verify-payment', protect, verifyPayment);
-
-// Get payment status
-router.get('/status/:bookingId', protect, getPaymentStatus);
 
 // PhonePe endpoints
 // Create PhonePe order

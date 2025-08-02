@@ -326,28 +326,7 @@ async sendWhatsAppOTP(phone: string): Promise<ApiResponse<null>> {
     return response.data;
   }
 
-  // Payment endpoints - Razorpay
-  async createPaymentOrder(bookingId: string): Promise<ApiResponse<{ orderId: string; amount: number; currency: string }>> {
-    const response: AxiosResponse<ApiResponse<{ orderId: string; amount: number; currency: string }>> = await this.api.post('/payments/create-order', {
-      bookingId
-    });
-    return response.data;
-  }
 
-  async verifyPayment(paymentData: {
-    orderId: string;
-    paymentId: string;
-    signature: string;
-    bookingId: string;
-  }): Promise<ApiResponse<{ verified: boolean; booking: Booking }>> {
-    const response: AxiosResponse<ApiResponse<{ verified: boolean; booking: Booking }>> = await this.api.post('/payments/verify', paymentData);
-    return response.data;
-  }
-
-  async getPaymentStatus(bookingId: string): Promise<ApiResponse<{ status: string; details: any }>> {
-    const response: AxiosResponse<ApiResponse<{ status: string; details: any }>> = await this.api.get(`/payments/status/${bookingId}`);
-    return response.data;
-  }
 
   // Payment endpoints - PhonePe
   async createPhonePeOrder(bookingId: string, amount: number): Promise<ApiResponse<{ transactionId: string; paymentUrl: string }>> {

@@ -35,37 +35,14 @@ const app = express();
 
 // Middleware
 const corsOptions = {
-  origin: function (origin, callback) {
-    // In production, only allow specific origins
-    if (process.env.NODE_ENV === 'production') {
-      const allowedOrigins = [
-        process.env.FRONTEND_URL,
+  origin: process.env.NODE_ENV === 'production' 
+    ? [
         'https://caarvo.com', 
         'https://www.caarvo.com',
         'https://caarvo.onrender.com',
-        /https:\/\/.*\.onrender\.com$/,
-        'https://api.phonepe.com',
-        /https:\/\/.*\.phonepe\.com$/
-      ];
-      
-      const isAllowed = !origin || allowedOrigins.some(allowed => {
-        if (allowed instanceof RegExp) {
-          return allowed.test(origin);
-        }
-        return allowed === origin;
-      });
-
-      if (isAllowed) {
-        callback(null, true);
-      } else {
-        console.log(`CORS blocked origin: ${origin}`);
-        callback(new Error(`Origin ${origin} not allowed by CORS`));
-      }
-    } else {
-      // In development, allow localhost
-      callback(null, true);
-    }
-  },
+        'https://api.phonepe.com'
+      ]
+    : ['http://localhost:3000', 'http://127.0.0.1:3000'],
   credentials: true,
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -73,8 +50,7 @@ const corsOptions = {
 };
 
 // Domain configured for caarvo.com
-// Enable CORS preflight for all routes
-app.options('*', cors(corsOptions));
+
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -104,6 +80,16 @@ app.use('/api/payments', paymentRoutes);
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Vehicle Cleaning Service API is running' });
+});
+
+// Root endpoint for debugging
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Vehicle Cleaning Service API',
+    status: 'running',
+    environment: process.env.NODE_ENV,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Serve static files from React build in production

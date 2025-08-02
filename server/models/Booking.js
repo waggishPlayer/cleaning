@@ -65,15 +65,7 @@ const bookingSchema = new mongoose.Schema({
     enum: ['pending', 'completed', 'failed', 'refunded'],
     default: 'pending'
   },
-  razorpayOrderId: {
-    type: String
-  },
-  razorpayPaymentId: {
-    type: String
-  },
-  razorpaySignature: {
-    type: String
-  },
+
   phonePeTransactionId: {
     type: String
   },
@@ -82,7 +74,7 @@ const bookingSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['cash', 'razorpay', 'phonepe'],
+    enum: ['cash', 'phonepe'],
     default: 'cash'
   },
   notes: {
