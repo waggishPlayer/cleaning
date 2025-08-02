@@ -35,23 +35,46 @@ const app = express();
 
 // Middleware
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
-    ? [
-        process.env.FRONTEND_URL, 
+  origin: function (origin, callback) {
+    // In production, only allow specific origins
+    if (process.env.NODE_ENV === 'production') {
+      const allowedOrigins = [
+        process.env.FRONTEND_URL,
         'https://caarvo.com', 
         'https://www.caarvo.com',
         'https://caarvo.onrender.com',
-        'https://*.onrender.com'
-      ]
-    : ['http://localhost:3000', 'http://127.0.0.1:3000'],
+        /https:\/\/.*\.onrender\.com$/,
+        'https://api.phonepe.com',
+        /https:\/\/.*\.phonepe\.com$/
+      ];
+      
+      const isAllowed = !origin || allowedOrigins.some(allowed => {
+        if (allowed instanceof RegExp) {
+          return allowed.test(origin);
+        }
+        return allowed === origin;
+      });
+
+      if (isAllowed) {
+        callback(null, true);
+      } else {
+        console.log(`CORS blocked origin: ${origin}`);
+        callback(new Error(`Origin ${origin} not allowed by CORS`));
+      }
+    } else {
+      // In development, allow localhost
+      callback(null, true);
+    }
+  },
   credentials: true,
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-VERIFY', 'X-MERCHANT-ID', 'Accept']
 };
 
 // Domain configured for caarvo.com
-
+// Enable CORS preflight for all routes
+app.options('*', cors(corsOptions));
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

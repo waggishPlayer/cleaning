@@ -9,7 +9,7 @@ const PHONEPE_CLIENT_SECRET = process.env.PHONEPE_CLIENT_SECRET || "96434309-779
 
 // Use production URL in production, sandbox URL in development
 const PHONEPE_BASE_URL = process.env.NODE_ENV === 'production'
-    ? (process.env.PHONEPE_PROD_BASE_URL || "https://api.phonepe.com/apis/hermes")
+    ? (process.env.PHONEPE_BASE_URL || "https://api.phonepe.com/apis/hermes")
     : (process.env.PHONEPE_BASE_URL || "https://api-preprod.phonepe.com/apis/pg-sandbox");
 
 // For testing, use PGTESTPAYUAT86 as the merchant ID
@@ -123,8 +123,20 @@ const createPhonePeOrder = async (req, res) => {
         // Make API call to PhonePe
         let response;
         try {
+            // Ensure the URL is correctly formatted according to PhonePe documentation
+            const payEndpoint = '/pg/v1/pay';
+            const fullUrl = `${PHONEPE_BASE_URL}${payEndpoint}`;
+            console.log(`Making request to: ${fullUrl}`);
+            console.log('PhonePe request payload:', { request: payloadBase64.substring(0, 50) + '...' });
+            console.log('PhonePe request headers:', {
+                'X-VERIFY': xVerify.substring(0, 10) + '...',
+                'X-MERCHANT-ID': MERCHANT_ID,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            });
+            
             response = await axios.post(
-                `${PHONEPE_BASE_URL}/pg/v1/pay`,
+                fullUrl,
                 {
                     request: payloadBase64
                 },
@@ -134,7 +146,8 @@ const createPhonePeOrder = async (req, res) => {
                         'X-VERIFY': xVerify,
                         'X-MERCHANT-ID': MERCHANT_ID,
                         'Accept': 'application/json'
-                    }
+                    },
+                    timeout: 30000 // 30 second timeout
                 }
             );
         } catch (apiError) {
@@ -159,7 +172,22 @@ const createPhonePeOrder = async (req, res) => {
                     }
                 };
             } else {
-                throw apiError; // Re-throw if not a test case
+                console.error('PhonePe API Error:', {
+                    status: apiError.response?.status,
+                    statusText: apiError.response?.statusText,
+                    data: apiError.response?.data,
+                    message: apiError.message
+                });
+                
+                // Return a user-friendly error response
+                return res.status(500).json({
+                    success: false,
+                    message: 'Payment gateway error. Please try again later.',
+                    error: {
+                        code: apiError.response?.status || 'UNKNOWN',
+                        message: apiError.response?.data?.message || apiError.message
+                    }
+                });
             }
         }
 
@@ -242,16 +270,30 @@ const xVerify = crypto
     .digest('hex') + '###1';
 
 // Check payment status from PhonePe
-const statusResponse = await axios.get(
-    `${PHONEPE_BASE_URL}/pg/v1/status/${MERCHANT_ID}/${merchantTransactionId}`,
-    {
-        headers: {
-            'X-VERIFY': xVerify,
-            'X-MERCHANT-ID': MERCHANT_ID,
-            'Accept': 'application/json'
+console.log(`Making status check request to: ${PHONEPE_BASE_URL}/pg/v1/status/${MERCHANT_ID}/${merchantTransactionId}`);
+let statusResponse;
+try {
+    statusResponse = await axios.get(
+        `${PHONEPE_BASE_URL}/pg/v1/status/${MERCHANT_ID}/${merchantTransactionId}`,
+        {
+            headers: {
+                'X-VERIFY': xVerify,
+                'X-MERCHANT-ID': MERCHANT_ID,
+                'Accept': 'application/json'
+            },
+            timeout: 30000 // 30 second timeout
         }
-    }
-);
+    );
+    console.log('PhonePe status check response:', JSON.stringify(statusResponse.data, null, 2));
+} catch (error) {
+    console.error('PhonePe status check error:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message
+    });
+    throw error;
+}
 
 // Extract payment status from the response
 const paymentStatus = statusResponse.data?.data?.state || 'UNKNOWN';
@@ -333,16 +375,34 @@ const checkPhonePeStatus = async (req, res) => {
 
         console.log('Making status check API call to PhonePe');
         // Check payment status from PhonePe
-        const statusResponse = await axios.get(
-            `${PHONEPE_BASE_URL}/pg/v1/status/${MERCHANT_ID}/${transactionId}`,
-            {
-                headers: {
-                    'X-VERIFY': xVerify,
-                    'X-MERCHANT-ID': MERCHANT_ID,
-                    'Accept': 'application/json'
+        console.log(`Making status check request to: ${PHONEPE_BASE_URL}/pg/v1/status/${MERCHANT_ID}/${transactionId}`);
+        let statusResponse;
+        try {
+            statusResponse = await axios.get(
+                `${PHONEPE_BASE_URL}/pg/v1/status/${MERCHANT_ID}/${transactionId}`,
+                {
+                    headers: {
+                        'X-VERIFY': xVerify,
+                        'X-MERCHANT-ID': MERCHANT_ID,
+                        'Accept': 'application/json'
+                    },
+                    timeout: 30000 // 30 second timeout
                 }
-            }
-        );
+            );
+            console.log('PhonePe status check response:', JSON.stringify(statusResponse.data, null, 2));
+        } catch (error) {
+            console.error('PhonePe status check error:', {
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data,
+                message: error.message
+            });
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to check payment status',
+                error: error.response?.data?.message || error.message
+            });
+        }
 
         // Extract payment status from the response
         const phonePeStatus = statusResponse.data?.data?.state || 'UNKNOWN';
