@@ -3,7 +3,7 @@ services:
     name: vehicle-cleaning-api
     env: node
     plan: free
-    buildCommand: npm run build && npm install
+    buildCommand: npm install && cd ../client && npm install && npm run build && cd ../server && mkdir -p ../client/build && cp -r ../client/build .
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:

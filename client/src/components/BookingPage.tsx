@@ -4,7 +4,7 @@ import { Car, Calendar, MapPin, Check, Plus, Navigation, CreditCard, X } from 'l
 import { useNavigate } from 'react-router-dom';
 
 
-import { Vehicle } from '../types';
+import { Vehicle, BookingFormData } from '../types';
 
 interface Address {
   _id: string;
@@ -287,7 +287,7 @@ const BookingPage: React.FC = () => {
         'Demo Wash': 'demo'
       };
 
-      const serviceType = serviceTypeMap[bookingData.service?.name || ''] || 'exterior';
+      const serviceType = serviceTypeMap[bookingData.service?.name || ''] || 'exterior' as 'exterior' | 'interior' | 'full-service' | 'premium' | 'deep-clean' | 'detail-clean' | 'demo';
 
       if (!bookingData.vehicle?._id) {
         setError('Please select a vehicle');
@@ -306,9 +306,9 @@ const BookingPage: React.FC = () => {
       }
 
       // First create the booking
-      const bookingPayload = {
+      const bookingPayload: BookingFormData = {
         vehicleId: bookingData.vehicle._id,
-        serviceType: serviceType,
+        serviceType: serviceType as BookingFormData['serviceType'],
         scheduledDate: bookingData.dateTime.date,
         scheduledTime: bookingData.dateTime.time,
         location: {
@@ -382,16 +382,16 @@ const BookingPage: React.FC = () => {
         'Demo Wash': 'demo'
       };
 
-      const serviceType = serviceTypeMap[bookingData.service?.name || ''] || 'exterior';
+      const serviceType = serviceTypeMap[bookingData.service?.name || ''] || 'exterior' as 'exterior' | 'interior' | 'full-service' | 'premium' | 'deep-clean' | 'detail-clean' | 'demo';
 
       if (!bookingData.vehicle?._id) {
         setError('Please select a vehicle');
         return;
       }
 
-      const bookingPayload = {
+      const bookingPayload: BookingFormData = {
         vehicleId: bookingData.vehicle._id,
-        serviceType: serviceType,
+        serviceType: serviceType as BookingFormData['serviceType'],
         scheduledDate: bookingData.dateTime.date,
         scheduledTime: bookingData.dateTime.time,
         location: {

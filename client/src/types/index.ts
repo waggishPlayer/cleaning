@@ -45,7 +45,7 @@ export interface Booking {
   customer: string | User;
   vehicle: string | Vehicle;
   worker?: string | User;
-  serviceType: 'exterior' | 'interior' | 'full-service' | 'premium';
+  serviceType: 'exterior' | 'interior' | 'full-service' | 'premium' | 'deep-clean' | 'detail-clean' | 'demo';
   scheduledDate: string;
   scheduledTime: string;
   location: {
@@ -60,7 +60,10 @@ export interface Booking {
   };
   status: 'pending' | 'assigned' | 'en-route' | 'in-progress' | 'completed' | 'cancelled';
   price: number;
-  paymentStatus: 'pending' | 'paid' | 'refunded';
+  paymentStatus: 'pending' | 'paid' | 'refunded' | 'completed' | 'failed';
+  paymentMethod?: 'cash' | 'razorpay' | 'phonepe';
+  phonePeTransactionId?: string;
+  phonePePaymentId?: string;
   notes?: {
     customer?: string;
     worker?: string;
@@ -151,7 +154,7 @@ export interface VehicleFormData {
 
 export interface BookingFormData {
   vehicleId: string;
-  serviceType: 'exterior' | 'interior' | 'full-service' | 'premium';
+  serviceType: 'exterior' | 'interior' | 'full-service' | 'premium' | 'deep-clean' | 'detail-clean' | 'demo';
   scheduledDate: string;
   scheduledTime: string;
   location: {
@@ -162,6 +165,7 @@ export interface BookingFormData {
   };
   notes?: string;
   price: number;
+  paymentMethod?: string;
 }
 
 export interface Analytics {
