@@ -10,6 +10,7 @@
     "start:with-keep-alive": "node start-server.js",
     "prod:with-keep-alive": "NODE_ENV=production node start-server.js",
     "keep-alive": "node keep-alive.js",
+    "build": "cd ../client && npm install && npm run build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

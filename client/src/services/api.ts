@@ -14,7 +14,8 @@ import {
   PageViewData
 } from '../types';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+// Use relative path for production, fallback to localhost for development
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 
 class ApiService {
   private api: AxiosInstance;

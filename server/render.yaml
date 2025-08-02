@@ -3,15 +3,21 @@ services:
     name: vehicle-cleaning-api
     env: node
     plan: free
-    buildCommand: npm install
+    buildCommand: npm run build && npm install
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 10000
       - key: MONGODB_URI
         sync: false
       - key: JWT_SECRET
+        sync: false
+      - key: MSG91_API_KEY
+        sync: false
+      - key: PHONEPE_MERCHANT_ID
+        sync: false
+      - key: PHONEPE_CLIENT_ID
+        sync: false
+      - key: PHONEPE_CLIENT_SECRET
         sync: false

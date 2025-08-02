@@ -36,10 +36,18 @@ const app = express();
 // Middleware
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
-    ? [process.env.FRONTEND_URL, 'https://caarvo.com', 'https://www.caarvo.com']
+    ? [
+        process.env.FRONTEND_URL, 
+        'https://caarvo.com', 
+        'https://www.caarvo.com',
+        'https://caarvo.onrender.com',
+        'https://*.onrender.com'
+      ]
     : ['http://localhost:3000', 'http://127.0.0.1:3000'],
   credentials: true,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
 
 // Domain configured for caarvo.com
@@ -77,12 +85,28 @@ app.get('/api/health', (req, res) => {
 
 // Serve static files from React build in production
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../client/build')));
+  const buildPath = path.join(__dirname, '../client/build');
+  const indexPath = path.join(buildPath, 'index.html');
   
-  // Handle React Router - send all non-API requests to React app
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../client/build/index.html'));
-  });
+  // Check if build directory exists
+  if (require('fs').existsSync(buildPath)) {
+    console.log('✅ React build found, serving static files');
+    app.use(express.static(buildPath));
+    
+    // Handle React Router - send all non-API requests to React app
+    app.get('*', (req, res) => {
+      res.sendFile(indexPath);
+    });
+  } else {
+    console.log('⚠️  React build not found, serving API only');
+    // If no build files, just serve API endpoints
+    app.get('/', (req, res) => {
+      res.json({ 
+        message: 'Vehicle Cleaning Service API is running',
+        status: 'API only mode - frontend build not found'
+      });
+    });
+  }
 } else {
   // 404 handler for development
   app.use('*', (req, res) => {
