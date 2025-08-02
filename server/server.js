@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
+const PingService = require('./pingService');
 
 // Load environment variables
 // Set NODE_ENV explicitly if not set
@@ -82,6 +83,30 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Vehicle Cleaning Service API is running' });
 });
 
+// Ping service status endpoint
+app.get('/api/ping-status', (req, res) => {
+  res.json({
+    status: 'OK',
+    pingService: pingService.getStatus(),
+    message: 'Ping service status retrieved successfully'
+  });
+});
+
+// Manual ping service control (for debugging)
+app.post('/api/ping-control', (req, res) => {
+  const { action } = req.body;
+  
+  if (action === 'start') {
+    pingService.start();
+    res.json({ success: true, message: 'Ping service started' });
+  } else if (action === 'stop') {
+    pingService.stop();
+    res.json({ success: true, message: 'Ping service stopped' });
+  } else {
+    res.status(400).json({ success: false, message: 'Invalid action. Use "start" or "stop"' });
+  }
+});
+
 // Root endpoint for debugging
 app.get('/', (req, res) => {
   res.json({ 
@@ -138,6 +163,16 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
+// Initialize ping service
+const pingService = new PingService();
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  
+  // Start ping service in production to prevent cooldown
+  if (process.env.NODE_ENV === 'production') {
+    pingService.start();
+  } else {
+    console.log('🔄 Ping service disabled in development mode');
+  }
 });
