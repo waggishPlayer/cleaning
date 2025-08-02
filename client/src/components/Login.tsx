@@ -15,6 +15,7 @@ const Login: React.FC<LoginProps> = () => {
   const [loading, setLoading] = useState(false);
   const [generalError, setGeneralError] = useState('');
 
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const validatePhone = () => {
@@ -23,7 +24,10 @@ const Login: React.FC<LoginProps> = () => {
     if (!formData.phone) {
       newErrors.phone = 'Phone number is required';
     } else {
+      // Remove all non-digit characters
       const cleanPhone = formData.phone.replace(/\D/g, '');
+      
+      // Check if it's a valid 10-digit Indian mobile number
       if (cleanPhone.length !== 10) {
         newErrors.phone = 'Please enter a valid 10-digit Indian mobile number';
       } else if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
@@ -31,8 +35,8 @@ const Login: React.FC<LoginProps> = () => {
       }
     }
     
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors(prev => ({ ...prev, phone: newErrors.phone || '' }));
+    return !newErrors.phone;
   };
 
   const validatePassword = () => {
@@ -44,37 +48,56 @@ const Login: React.FC<LoginProps> = () => {
       newErrors.password = 'Password must be at least 6 characters';
     }
     
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors(prev => ({ ...prev, password: newErrors.password || '' }));
+    return !newErrors.password;
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validatePhone() || !validatePassword()) return;
+  const handleLogin = async (e: React.MouseEvent<HTMLButtonElement> | React.FormEvent) => {
+    // Prevent default behavior
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation(); // Add this to ensure the event doesn't bubble up
+    }
+    
+    // Validate form fields
+    if (!validatePhone() || !validatePassword()) {
+      console.log('Validation failed, stopping login process');
+      return;
+    }
     
     setLoading(true);
     setGeneralError('');
     
     try {
+      // Clean the phone number properly
       const cleanPhone = formData.phone.replace(/\D/g, '');
-      const fullPhone = `+91${cleanPhone}`;
       
-      // Login with phone and password
-      const response = await apiService.loginWithPassword(fullPhone, formData.password);
-      
-      if (response.success && response.data) {
-        const { user: userData, token: tokenData } = response.data;
-        // Update auth context
-        localStorage.setItem('token', tokenData);
-        localStorage.setItem('user', JSON.stringify(userData));
-        // Navigate to dashboard after successful login
-        navigate('/dashboard');
-      } else {
-        setGeneralError(response.message || 'Login failed');
+      // Ensure it's a valid 10-digit Indian mobile number
+      if (cleanPhone.length !== 10 || !/^[6-9]\d{9}$/.test(cleanPhone)) {
+        setErrors(prev => ({ ...prev, phone: 'Please enter a valid 10-digit Indian mobile number' }));
+        setLoading(false);
+        return;
       }
       
+      const fullPhone = `+91${cleanPhone}`;
+      console.log('Attempting login with:', { phone: fullPhone, passwordLength: formData.password.length });
+      
+      // Login with phone and password using AuthContext
+      await login(fullPhone, formData.password);
+      
+      console.log('Login successful, navigating to dashboard');
+      // Navigate to dashboard after successful login
+      navigate('/dashboard');
+      
     } catch (error: any) {
-      setGeneralError(error.response?.data?.message || error.message || 'Login failed');
+      console.error('Login error:', error);
+      if (error.response?.status === 401) {
+        setGeneralError('Invalid phone number or password. Please try again.');
+      } else if (error.response?.status === 429) {
+        setGeneralError('Too many login attempts. Please try again later.');
+      } else {
+        setGeneralError(error.message || error.response?.data?.message || 'Login failed. Please try again later.');
+      }
     } finally {
       setLoading(false);
     }
@@ -83,18 +106,30 @@ const Login: React.FC<LoginProps> = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     
+    // Clear general error when user starts typing
+    if (generalError) {
+      setGeneralError('');
+    }
+    
     // Format phone number
     if (name === 'phone') {
+      // Only allow digits
       const cleaned = value.replace(/\D/g, '');
       // Limit to 10 digits for Indian mobile numbers
       const limited = cleaned.slice(0, 10);
-      const formatted = limited.replace(/(\d{5})(\d{5})/, '$1 $2');
+      
+      // Format with a space after 5 digits for readability
+      let formatted = limited;
+      if (limited.length > 5) {
+        formatted = limited.replace(/(\d{5})(\d{1,5})/, '$1 $2');
+      }
+      
       setFormData(prev => ({ ...prev, [name]: formatted }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
     
-    // Clear error when user starts typing
+    // Clear specific field error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -106,14 +141,21 @@ const Login: React.FC<LoginProps> = () => {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <div className="flex justify-center mb-6">
-            <div className="w-14 h-10 bg-black rounded-full overflow-hidden flex items-center justify-center shadow-lg">
-              <img src="/logo.png" alt="Caarvo Logo" className="h-8 w-auto object-contain" />
-            </div>
+            <img
+              src="/Caarvo no back 2.png"
+              alt="Caarvo Logo"
+              className="h-[40px] w-auto"
+              style={{
+                filter: 'drop-shadow(0 0 5px rgba(255,255,255,0.6))',
+                maxHeight: '40px',
+                maxWidth: '100%'
+              }}
+            />
           </div>
         </div>
         
         <div className="card mt-8">
-          <form className="space-y-6" onSubmit={handleLogin}>
+          <form className="space-y-6" onSubmit={handleLogin} noValidate>
             <div className="text-center">
               <h2 className="text-3xl font-extrabold gradient-text">
                 Welcome Back!
@@ -212,7 +254,8 @@ const Login: React.FC<LoginProps> = () => {
             </div>
             
             <button
-              type="submit"
+              type="button"
+              onClick={handleLogin}
               disabled={loading}
               className="btn-primary w-full flex justify-center items-center py-4 text-lg font-semibold"
             >
@@ -259,4 +302,4 @@ const Login: React.FC<LoginProps> = () => {
   );
 };
 
-export default Login; 
+export default Login;

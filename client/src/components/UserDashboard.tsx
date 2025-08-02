@@ -397,7 +397,7 @@ const UserDashboard: React.FC = () => {
                             Status
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-[#00ddff] uppercase tracking-wider">
-                            Amount
+                            Amount Paid
                           </th>
                         </tr>
                       </thead>
@@ -421,7 +421,7 @@ const UserDashboard: React.FC = () => {
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-[#c1ff72] font-semibold">
-                              ₹{booking.amount}
+                              ₹{booking.price}
                             </td>
                           </tr>
                         ))}
@@ -456,7 +456,7 @@ const UserDashboard: React.FC = () => {
                             Status
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-[#00ddff] uppercase tracking-wider">
-                            Amount
+                            Amount Paid
                           </th>
                         </tr>
                       </thead>
@@ -480,7 +480,7 @@ const UserDashboard: React.FC = () => {
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-[#c1ff72] font-semibold">
-                              ₹{booking.amount}
+                              ₹{booking.price}
                             </td>
                           </tr>
                         ))}

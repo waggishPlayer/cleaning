@@ -95,6 +95,18 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
+export interface PageViewData {
+  landingPageViews: number;
+  registerPageViews: number;
+  dailyViews: Array<{
+    _id: {
+      date: string;
+      pageName: string;
+    };
+    count: number;
+  }>;
+}
+
 export interface LoginCredentials {
   email: string;
   password: string;
@@ -165,4 +177,4 @@ export interface Analytics {
     _id: string;
     count: number;
   }>;
-} 
+}

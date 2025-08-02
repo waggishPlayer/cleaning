@@ -1,0 +1,837 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import apiService from '../services/api';
+
+const sections = [
+  { id: 'analytics', label: 'Analytics' },
+  { id: 'bookings', label: 'All Bookings' },
+  { id: 'users', label: 'Manage Users' },
+  { id: 'register-worker', label: 'Register Worker' },
+  { id: 'register-admin', label: 'Register Admin' },
+];
+
+type UserRole = 'user' | 'admin' | 'worker';
+
+const AdminDashboard: React.FC = () => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [activeSection, setActiveSection] = useState('analytics');
+  const [registerForm, setRegisterForm] = useState({ 
+    name: '', 
+    email: '', 
+    password: '', 
+    phone: '', 
+    street: '', 
+    city: '', 
+    state: '', 
+    zipCode: '', 
+    isActive: true 
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [registerError, setRegisterError] = useState('');
+  const [registerSuccess, setRegisterSuccess] = useState('');
+  const [registerLoading, setRegisterLoading] = useState(false);
+
+  // Data states
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
+  const [users, setUsers] = useState<any[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [bookingsLoading, setBookingsLoading] = useState(true);
+  const [error, setError] = useState('');
+  
+  // Delete confirmation states
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [bookingToDelete, setBookingToDelete] = useState('');
+  
+
+  
+  // Worker selection states
+  const handleDeleteBooking = async (bookingId: string) => {
+    try {
+      setError('');
+      const res = await apiService.deleteBooking(bookingId);
+      
+      if (res.success) {
+        fetchDashboardData();
+        setShowDeleteConfirmation(false);
+        setBookingToDelete('');
+      } else {
+        setError(res.message || 'Failed to delete booking');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Failed to delete booking');
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    setAnalyticsLoading(true);
+    setUsersLoading(true);
+    setBookingsLoading(true);
+    setError('');
+
+    try {
+      const [analyticsRes, usersRes, bookingsRes] = await Promise.all([
+        apiService.getDashboardAnalytics(),
+        apiService.getAllUsers(),
+        apiService.getAllBookings(),
+      ]);
+
+      if (analyticsRes.success) setAnalytics(analyticsRes.data);
+      else setError(prev => prev + 'Failed to load analytics. ');
+
+      if (usersRes.success) setUsers(usersRes.data || []);
+      else setError(prev => prev + 'Failed to load users. ');
+
+      if (bookingsRes.success) setBookings(bookingsRes.data || []);
+      else setError(prev => prev + 'Failed to load bookings. ');
+
+      // Reset selected user when refreshing users list
+      setSelectedUser(null);
+      setUserBookings([]);
+
+    } catch (err: any) {
+      console.error('Dashboard data fetch error:', err);
+      setError('Failed to load dashboard data. Please check your connection and try again.');
+    } finally {
+      setAnalyticsLoading(false);
+      setUsersLoading(false);
+      setBookingsLoading(false);
+    }
+  };
+
+
+
+  const handleRegisterWorker = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegisterError('');
+    setRegisterSuccess('');
+    setRegisterLoading(true);
+
+    try {
+      const res = await apiService.registerWorker({
+        name: registerForm.name,
+        email: registerForm.email,
+        password: registerForm.password,
+        phone: registerForm.phone,
+        address: {
+          street: registerForm.street,
+          city: registerForm.city,
+          state: registerForm.state,
+          zipCode: registerForm.zipCode,
+        },
+      });
+
+      if (res.success) {
+        setRegisterSuccess('Worker registered successfully!');
+        setRegisterForm({ 
+          name: '', 
+          email: '', 
+          password: '', 
+          phone: '', 
+          street: '', 
+          city: '', 
+          state: '', 
+          zipCode: '', 
+          isActive: true 
+        });
+        fetchDashboardData();
+      } else {
+        setRegisterError(res.message || 'Failed to register worker');
+      }
+    } catch (err: any) {
+      setRegisterError(err.response?.data?.message || err.message || 'Failed to register worker');
+    } finally {
+      setRegisterLoading(false);
+    }
+  };
+
+  const handleRegisterAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegisterError('');
+    setRegisterSuccess('');
+    setRegisterLoading(true);
+
+    try {
+      const res = await apiService.registerAdmin({
+        name: registerForm.name,
+        email: registerForm.email,
+        password: registerForm.password,
+        phone: registerForm.phone,
+        address: {
+          street: registerForm.street,
+          city: registerForm.city,
+          state: registerForm.state,
+          zipCode: registerForm.zipCode,
+        },
+      });
+
+      if (res.success) {
+        setRegisterSuccess('Admin registered successfully!');
+        setRegisterForm({ 
+          name: '', 
+          email: '', 
+          password: '', 
+          phone: '', 
+          street: '', 
+          city: '', 
+          state: '', 
+          zipCode: '', 
+          isActive: true 
+        });
+        fetchDashboardData();
+      } else {
+        setRegisterError(res.message || 'Failed to register admin');
+      }
+    } catch (err: any) {
+      setRegisterError(err.response?.data?.message || err.message || 'Failed to register admin');
+    } finally {
+      setRegisterLoading(false);
+    }
+  };
+
+  const [selectedWorkerId, setSelectedWorkerId] = useState<string>('');
+  const [showWorkerSelection, setShowWorkerSelection] = useState<boolean>(false);
+  const [bookingToAssign, setBookingToAssign] = useState<string>('');
+
+  const handleBookingAction = async (action: string, bookingId: string) => {
+    try {
+      setError('');
+      let res;
+      
+      switch (action) {
+        case 'assign':
+          // Show worker selection modal instead of auto-assigning
+          setBookingToAssign(bookingId);
+          setShowWorkerSelection(true);
+          return;
+        case 'complete':
+          res = await apiService.markBookingComplete(bookingId);
+          break;
+        case 'cancel':
+          res = await apiService.cancelBooking(bookingId);
+          break;
+        case 'pending':
+          res = await apiService.updateBookingStatus(bookingId, 'pending');
+          break;
+        default:
+          return;
+      }
+      
+      if (res.success) {
+        fetchDashboardData();
+      } else {
+        setError(res.message || `Failed to ${action} booking`);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || `Failed to ${action} booking`);
+    }
+  };
+
+  const handleAssignWorker = async () => {
+    if (!selectedWorkerId || !bookingToAssign) {
+      setError('Please select a worker');
+      return;
+    }
+
+    try {
+      const res = await apiService.assignBooking(bookingToAssign, selectedWorkerId);
+      if (res.success) {
+        fetchDashboardData();
+        setShowWorkerSelection(false);
+        setBookingToAssign('');
+        setSelectedWorkerId('');
+      } else {
+        setError(res.message || 'Failed to assign booking');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Failed to assign booking');
+    }
+  };
+
+  if (!user || user.role !== 'admin') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600">You don't have permission to access this page.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex bg-black text-white">
+      {/* Sidebar */}
+      <aside className="w-64 bg-[#18181b] shadow-lg border-r border-gray-800 flex flex-col">
+        <div className="p-6 border-b border-gray-800">
+          <h1 className="text-xl font-bold text-[#00ddff]">Admin Panel</h1>
+        </div>
+        
+        <nav className="flex-1 px-4 py-2">
+          {sections.map((section) => (
+            <button
+              key={section.id}
+              className={`w-full text-left py-3 px-4 mb-2 rounded-lg transition-colors ${
+                activeSection === section.id 
+                  ? 'bg-gradient-to-r from-[#00ddff] to-[#c1ff72] text-black font-semibold' 
+                  : 'text-gray-300 hover:bg-gray-800 border border-gray-700'
+              }`}
+              onClick={() => setActiveSection(section.id)}
+            >
+              {section.label}
+            </button>
+          ))}
+        </nav>
+        
+        <div className="p-4 border-t border-gray-800">
+          <div className="text-sm text-gray-400 mb-2">
+            Logged in as: {user.name}
+          </div>
+          <button
+            onClick={logout}
+            className="w-full py-2 px-4 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors shadow-lg"
+          >
+            Logout
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 p-8">
+        {error && (
+          <div className="mb-6 p-4 bg-red-900/30 border border-red-500 text-red-400 rounded-lg">
+            {error}
+          </div>
+        )}
+
+        {/* Analytics Section */}
+        {activeSection === 'analytics' && (
+          <div>
+            <h2 className="text-2xl font-bold text-[#00ddff] mb-6 border-b border-gray-800 pb-2">Analytics Dashboard</h2>
+            
+            {analyticsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="loading-spinner"></div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="bg-[#18181b] p-6 rounded-xl shadow-lg border border-gray-800 hover:border-[#00ddff] transition-colors">
+                  <h3 className="text-lg font-semibold text-gray-300 mb-2">Total Revenue</h3>
+                  <p className="text-2xl font-bold text-[#c1ff72]">₹{analytics?.totalRevenue || 0}</p>
+                </div>
+                <div className="bg-[#18181b] p-6 rounded-xl shadow-lg border border-gray-800 hover:border-[#00ddff] transition-colors">
+                  <h3 className="text-lg font-semibold text-gray-300 mb-2">Total Bookings</h3>
+                  <p className="text-2xl font-bold text-[#00ddff]">{analytics?.totalBookings || 0}</p>
+                </div>
+                <div className="bg-[#18181b] p-6 rounded-xl shadow-lg border border-gray-800 hover:border-[#00ddff] transition-colors">
+                  <h3 className="text-lg font-semibold text-gray-300 mb-2">Completed</h3>
+                  <p className="text-2xl font-bold text-[#c1ff72]">{analytics?.completedBookings || 0}</p>
+                </div>
+                <div className="bg-[#18181b] p-6 rounded-xl shadow-lg border border-gray-800 hover:border-[#00ddff] transition-colors">
+                  <h3 className="text-lg font-semibold text-gray-300 mb-2">Pending</h3>
+                  <p className="text-2xl font-bold text-[#00ddff]">{analytics?.pendingBookings || 0}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Bookings Section */}
+        {activeSection === 'bookings' && (
+          <div>
+            <h2 className="text-2xl font-bold text-[#00ddff] mb-6 border-b border-gray-800 pb-2">All Bookings</h2>
+            
+            {bookingsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="loading-spinner"></div>
+              </div>
+            ) : (
+              <div className="bg-[#18181b] rounded-xl shadow-lg border border-gray-800 overflow-x-auto">
+                <table className="min-w-full">
+                  <thead className="bg-black/30 border-b border-gray-800">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-[#00ddff] uppercase">Customer</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-[#00ddff] uppercase">Service</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-[#00ddff] uppercase">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-[#00ddff] uppercase">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-[#00ddff] uppercase">Price</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-[#00ddff] uppercase">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-800">
+                    {bookings.map((booking) => (
+                      <tr key={booking._id} className="hover:bg-black/20 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <div className="text-sm font-medium text-white">
+                              {booking.customer?.name || 'N/A'}
+                            </div>
+                            <div className="text-sm text-gray-400">
+                              {booking.customer?.phone || booking.customer?.email || 'N/A'}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                          {booking.serviceType || 'Standard Clean'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                          {new Date(booking.scheduledDate).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                            booking.status === 'completed' ? 'bg-[#c1ff72]/20 text-[#c1ff72]' :
+                            booking.status === 'assigned' ? 'bg-[#00ddff]/20 text-[#00ddff]' :
+                            booking.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                            'bg-red-500/20 text-red-400'
+                          }`}>
+                            {booking.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-[#c1ff72] font-semibold">
+                          ₹{booking.price || 0}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+                          {booking.status === 'pending' && (
+                            <button
+                              onClick={() => handleBookingAction('assign', booking._id)}
+                              className="bg-[#00ddff] text-black px-3 py-1 rounded-lg text-xs hover:bg-[#c1ff72] transition-colors font-semibold shadow-lg"
+                            >
+                              Assign
+                            </button>
+                          )}
+                          {booking.status === 'assigned' && (
+                            <button
+                              onClick={() => handleBookingAction('complete', booking._id)}
+                              className="bg-[#c1ff72] text-black px-3 py-1 rounded-lg text-xs hover:bg-[#00ddff] transition-colors font-semibold shadow-lg"
+                            >
+                              Complete
+                            </button>
+                          )}
+                          {booking.status !== 'cancelled' && booking.status !== 'completed' && (
+                            <button
+                              onClick={() => handleBookingAction('cancel', booking._id)}
+                              className="bg-red-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-red-600 transition-colors font-semibold shadow-lg"
+                            >
+                              Cancel
+                            </button>
+                          )}
+                          {(booking.status === 'cancelled' || booking.status === 'completed') && (
+                            <button
+                              onClick={() => handleBookingAction('pending', booking._id)}
+                              className="bg-[#23272f] text-[#00ddff] border border-[#00ddff] px-3 py-1 rounded-lg text-xs hover:bg-[#00ddff] hover:text-black transition-colors font-semibold shadow-lg"
+                            >
+                              Move to Pending
+                            </button>
+                          )}
+                          <button
+                            onClick={() => {
+                              setBookingToDelete(booking._id);
+                              setShowDeleteConfirmation(true);
+                            }}
+                            className="bg-red-900 text-white px-3 py-1 rounded-lg text-xs hover:bg-red-800 transition-colors font-semibold shadow-lg"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Users Section */}
+        {activeSection === 'users' && (
+          <div>
+            <h2 className="text-2xl font-bold text-[#00ddff] mb-6 border-b border-gray-800 pb-2">Manage Users</h2>
+            
+            {usersLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="loading-spinner"></div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-6">
+                {/* Users List */}
+                <div className="w-full bg-[#18181b] rounded-xl shadow-lg border border-gray-800 overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead className="bg-black/30 border-b border-gray-800">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-[#00ddff] uppercase">Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-[#00ddff] uppercase">Email</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-[#00ddff] uppercase">Role</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-[#00ddff] uppercase">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-[#00ddff] uppercase">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800">
+                      {users.map((user) => (
+                        <tr 
+                          key={user._id} 
+                          className="hover:bg-black/20 transition-colors"
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
+                            {user.name}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                            {user.email}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                              user.role === 'admin' ? 'bg-[#c1ff72]/20 text-[#c1ff72]' :
+                              user.role === 'worker' ? 'bg-[#00ddff]/20 text-[#00ddff]' :
+                              'bg-gray-700 text-gray-300'
+                            }`}>
+                              {user.role}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                              user.isActive ? 'bg-[#c1ff72]/20 text-[#c1ff72]' : 'bg-red-500/20 text-red-400'
+                            }`}>
+                              {user.isActive ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <button
+                              onClick={() => navigate(`/admin/users/${user._id}`)}
+                              className="bg-[#00ddff]/20 text-[#00ddff] px-3 py-1 rounded-lg text-xs hover:bg-[#00ddff]/30 transition-colors font-semibold shadow-lg"
+                            >
+                              View Details
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Register Worker Section */}
+        {activeSection === 'register-worker' && (
+          <div>
+            <h2 className="text-2xl font-bold text-[#00ddff] mb-6 border-b border-gray-800 pb-2">Register Worker</h2>
+            
+            <div className="bg-[#18181b] p-6 rounded-xl shadow-lg border border-gray-800 max-w-2xl">
+              {registerError && (
+                <div className="mb-4 p-3 bg-red-900/30 border border-red-500 text-red-400 rounded-lg">
+                  {registerError}
+                </div>
+              )}
+              
+              {registerSuccess && (
+                <div className="mb-4 p-3 bg-[#c1ff72]/20 border border-[#c1ff72] text-[#c1ff72] rounded-lg">
+                  {registerSuccess}
+                </div>
+              )}
+              
+              <form onSubmit={handleRegisterWorker} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <input
+                    type="text"
+                    placeholder="Name"
+                    value={registerForm.name}
+                    onChange={(e) => setRegisterForm({...registerForm, name: e.target.value})}
+                    className="px-3 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#00ddff] focus:border-[#00ddff] placeholder-gray-500"
+                    required={true}
+                  />
+                  <input
+                    type="email"
+                    placeholder="Email (optional)"
+                    value={registerForm.email}
+                    onChange={(e) => setRegisterForm({...registerForm, email: e.target.value})}
+                    className="px-3 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#00ddff] focus:border-[#00ddff] placeholder-gray-500"
+                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Password"
+                      value={registerForm.password}
+                      onChange={(e) => setRegisterForm({...registerForm, password: e.target.value})}
+                      className="w-full px-3 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#00ddff] focus:border-[#00ddff] placeholder-gray-500"
+                      required={true}
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 text-gray-400 hover:text-[#00ddff] focus:outline-none"
+                    >
+                      {showPassword ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                  <input
+                    type="tel"
+                    placeholder="Phone"
+                    value={registerForm.phone}
+                    onChange={(e) => setRegisterForm({...registerForm, phone: e.target.value})}
+                    className="px-3 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#00ddff] focus:border-[#00ddff] placeholder-gray-500"
+                    required={true}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <h3 className="font-medium text-[#00ddff]">Address</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input
+                      type="text"
+                      placeholder="Street"
+                      value={registerForm.street}
+                      onChange={(e) => setRegisterForm({...registerForm, street: e.target.value})}
+                      className="px-3 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#00ddff] focus:border-[#00ddff] placeholder-gray-500"
+                    />
+                    <input
+                      type="text"
+                      placeholder="City"
+                      value={registerForm.city}
+                      onChange={(e) => setRegisterForm({...registerForm, city: e.target.value})}
+                      className="px-3 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#00ddff] focus:border-[#00ddff] placeholder-gray-500"
+                    />
+                    <input
+                      type="text"
+                      placeholder="State"
+                      value={registerForm.state}
+                      onChange={(e) => setRegisterForm({...registerForm, state: e.target.value})}
+                      className="px-3 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#00ddff] focus:border-[#00ddff] placeholder-gray-500"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Zip Code"
+                      value={registerForm.zipCode}
+                      onChange={(e) => setRegisterForm({...registerForm, zipCode: e.target.value})}
+                      className="px-3 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#00ddff] focus:border-[#00ddff] placeholder-gray-500"
+                    />
+                  </div>
+                </div>
+                
+                <button
+                  type="submit"
+                  disabled={registerLoading}
+                  className="w-full py-2 px-4 bg-gradient-to-r from-[#00ddff] to-[#c1ff72] text-black font-semibold rounded-lg hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[#00ddff] focus:ring-offset-2 transition duration-200 disabled:opacity-50"
+                >
+                  {registerLoading ? 'Registering...' : 'Register Worker'}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Register Admin Section */}
+        {activeSection === 'register-admin' && (
+          <div>
+            <h2 className="text-2xl font-bold text-[#00ddff] mb-6 border-b border-gray-800 pb-2">Register Admin</h2>
+            
+            <div className="bg-[#18181b] p-6 rounded-xl shadow-lg border border-gray-800 max-w-2xl">
+              {registerError && (
+                <div className="mb-4 p-3 bg-red-900/30 border border-red-500 text-red-400 rounded-lg">
+                  {registerError}
+                </div>
+              )}
+              
+              {registerSuccess && (
+                <div className="mb-4 p-3 bg-[#c1ff72]/20 border border-[#c1ff72] text-[#c1ff72] rounded-lg">
+                  {registerSuccess}
+                </div>
+              )}
+              
+              <form onSubmit={handleRegisterAdmin} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <input
+                    type="text"
+                    placeholder="Name"
+                    value={registerForm.name}
+                    onChange={(e) => setRegisterForm({...registerForm, name: e.target.value})}
+                    className="px-3 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#00ddff] focus:border-[#00ddff] placeholder-gray-500"
+                    required={true}
+                  />
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={registerForm.email}
+                    onChange={(e) => setRegisterForm({...registerForm, email: e.target.value})}
+                    className="px-3 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#00ddff] focus:border-[#00ddff] placeholder-gray-500"
+                    required={true}
+                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Password"
+                      value={registerForm.password}
+                      onChange={(e) => setRegisterForm({...registerForm, password: e.target.value})}
+                      className="w-full px-3 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#00ddff] focus:border-[#00ddff] placeholder-gray-500"
+                      required={true}
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 text-gray-400 hover:text-[#00ddff] focus:outline-none"
+                    >
+                      {showPassword ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                  <input
+                    type="tel"
+                    placeholder="Phone"
+                    value={registerForm.phone}
+                    onChange={(e) => setRegisterForm({...registerForm, phone: e.target.value})}
+                    className="px-3 py-2 bg-black border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#00ddff] focus:border-[#00ddff] placeholder-gray-500"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <h3 className="font-medium text-gray-900">Address</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input
+                      type="text"
+                      placeholder="Street"
+                      value={registerForm.street}
+                      onChange={(e) => setRegisterForm({...registerForm, street: e.target.value})}
+                      className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <input
+                      type="text"
+                      placeholder="City"
+                      value={registerForm.city}
+                      onChange={(e) => setRegisterForm({...registerForm, city: e.target.value})}
+                      className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <input
+                      type="text"
+                      placeholder="State"
+                      value={registerForm.state}
+                      onChange={(e) => setRegisterForm({...registerForm, state: e.target.value})}
+                      className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Zip Code"
+                      value={registerForm.zipCode}
+                      onChange={(e) => setRegisterForm({...registerForm, zipCode: e.target.value})}
+                      className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+                
+                <button
+                  type="submit"
+                  disabled={registerLoading}
+                  className="w-full py-2 px-4 bg-gradient-to-r from-[#00ddff] to-[#c1ff72] text-black font-semibold rounded-lg hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[#00ddff] focus:ring-offset-2 transition duration-200 disabled:opacity-50"
+                >
+                  {registerLoading ? 'Registering...' : 'Register Admin'}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Worker Selection Modal */}
+      {showWorkerSelection && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-[#23272f] rounded-lg p-6 w-96 shadow-xl">
+            <h3 className="text-xl font-bold mb-4 text-white">Select Worker to Assign</h3>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-300 mb-2">Worker</label>
+              <select 
+                className="w-full p-2 rounded-lg bg-[#18181b] text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#00ddff]"
+                value={selectedWorkerId}
+                onChange={(e) => setSelectedWorkerId(e.target.value)}
+              >
+                <option value="">Select a worker</option>
+                {users
+                  .filter(u => u.role === 'worker' && u.isActive)
+                  .map(worker => (
+                    <option key={worker._id} value={worker._id}>
+                      {worker.name} ({worker.phone})
+                    </option>
+                  ))
+                }
+              </select>
+            </div>
+            
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => {
+                  setShowWorkerSelection(false);
+                  setBookingToAssign('');
+                  setSelectedWorkerId('');
+                }}
+                className="px-4 py-2 rounded-lg bg-gray-700 text-white hover:bg-gray-600 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleAssignWorker}
+                className="px-4 py-2 rounded-lg bg-[#00ddff] text-black font-semibold hover:bg-[#c1ff72] transition-colors"
+                disabled={!selectedWorkerId}
+              >
+                Assign
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-[#23272f] rounded-lg p-6 w-96 shadow-xl">
+            <h3 className="text-xl font-bold mb-4 text-white">Confirm Deletion</h3>
+            
+            <p className="text-gray-300 mb-6">Are you sure you want to permanently delete this booking? This action cannot be undone.</p>
+            
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => {
+                  setShowDeleteConfirmation(false);
+                  setBookingToDelete('');
+                }}
+                className="px-4 py-2 rounded-lg bg-gray-700 text-white hover:bg-gray-600 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => handleDeleteBooking(bookingToDelete)}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AdminDashboard;

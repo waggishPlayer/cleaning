@@ -23,28 +23,18 @@ const Staff: React.FC = () => {
   const [registerLoading, setRegisterLoading] = useState(false);
 
   useEffect(() => {
-    if (!loginAttempted) return;
-    if (loading) return;
     if (user) {
-      console.log('Logged in user:', user);
       if (roleToggle === 'admin' && user.role === 'admin') {
         navigate('/admin/dashboard');
       } else if (roleToggle === 'worker' && user.role === 'worker') {
         navigate('/worker/dashboard');
       } else {
         setError(`You are not authorized as a ${roleToggle}. Please check your credentials or contact your administrator.`);
-        // Clear the invalid login
         localStorage.removeItem('token');
         localStorage.removeItem('user');
       }
-      setLoginAttempted(false);
-      setLoading(false);
-    } else if (!loading && loginAttempted) {
-      setError('Invalid phone number or password.');
-      setLoginAttempted(false);
-      setLoading(false);
     }
-  }, [user, loginAttempted, loading, navigate, roleToggle]);
+  }, [user, navigate, roleToggle]);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -69,21 +59,22 @@ const Staff: React.FC = () => {
       setError('Please enter both phone number and password.');
       return;
     }
-    
+
     const cleanPhone = phone.replace(/\D/g, '');
     if (cleanPhone.length !== 10) {
       setError('Please enter a valid 10-digit phone number.');
       return;
     }
-    
+
     setLoading(true);
     try {
       const fullPhone = `+91${cleanPhone}`;
       await authLogin(fullPhone, password);
       setLoginAttempted(true);
     } catch (err) {
-      setLoading(false);
       setError('Invalid phone number or password.');
+    } finally {
+      setLoading(false); // Always set loading to false
     }
   };
 
@@ -96,13 +87,13 @@ const Staff: React.FC = () => {
       setRegisterError('Please fill all fields.');
       return;
     }
-    
+
     const cleanPhone = adminPhone.replace(/\D/g, '');
     if (cleanPhone.length !== 10) {
       setRegisterError('Please enter a valid 10-digit phone number.');
       return;
     }
-    
+
     setRegisterLoading(true);
     try {
       const fullPhone = `+91${cleanPhone}`;
@@ -219,6 +210,126 @@ const Staff: React.FC = () => {
           {loading ? 'Logging in...' : 'Login'}
         </button>
       </form>
+
+      {/* Temporary Register Admin Button */}
+      <div className="mt-6 text-center">
+        <button
+          type="button"
+          onClick={() => setShowRegister(true)}
+          className="px-6 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors"
+        >
+          🚨 TEMPORARY: Register Admin
+        </button>
+        <p className="text-xs text-gray-400 mt-2">This button will be removed after admin setup</p>
+      </div>
+
+      {/* Admin Registration Modal */}
+      {showRegister && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4">
+          <div className="bg-[#18181b] rounded-2xl shadow-xl p-8 max-w-md w-full border-2 border-[#00ddff]">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-[#c1ff72]">Register Admin</h2>
+              <button
+                onClick={() => setShowRegister(false)}
+                className="text-gray-400 hover:text-white text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleAdminRegister} className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-[#c1ff72] mb-2">Full Name</label>
+                <input
+                  type="text"
+                  value={adminName}
+                  onChange={(e) => setAdminName(e.target.value)}
+                  className="w-full rounded-lg px-4 py-2 bg-black text-white border border-[#00ddff] focus:outline-none focus:ring-2 focus:ring-[#00ddff]"
+                  placeholder="Enter full name"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[#c1ff72] mb-2">Phone Number</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span className="text-gray-400 sm:text-sm">🇮🇳 +91</span>
+                  </div>
+                  <input
+                    type="tel"
+                    value={adminPhone}
+                    onChange={handleAdminPhoneChange}
+                    className="w-full rounded-lg px-4 py-2 pl-16 bg-black text-white border border-[#00ddff] focus:outline-none focus:ring-2 focus:ring-[#00ddff]"
+                    placeholder="Enter 10-digit mobile number"
+                    maxLength={11}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[#c1ff72] mb-2">Password</label>
+                <div className="relative">
+                  <input
+                    type={showAdminPassword ? "text" : "password"}
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    className="w-full rounded-lg px-4 py-2 pr-12 bg-black text-white border border-[#00ddff] focus:outline-none focus:ring-2 focus:ring-[#00ddff]"
+                    placeholder="Enter password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    onClick={() => setShowAdminPassword(!showAdminPassword)}
+                  >
+                    {showAdminPassword ? (
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {registerError && (
+                <div className="text-red-500 text-center font-semibold bg-red-50 rounded-lg py-2 px-3 border border-red-200">
+                  {registerError}
+                </div>
+              )}
+
+              {registerSuccess && (
+                <div className="text-green-500 text-center font-semibold bg-green-50 rounded-lg py-2 px-3 border border-green-200">
+                  {registerSuccess}
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowRegister(false)}
+                  className="flex-1 py-2 px-4 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2 px-4 bg-[#00ddff] text-black rounded-lg font-semibold hover:bg-[#c1ff72] transition-colors"
+                  disabled={registerLoading}
+                >
+                  {registerLoading ? 'Registering...' : 'Register Admin'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

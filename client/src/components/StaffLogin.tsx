@@ -51,29 +51,55 @@ const StaffLogin: React.FC<StaffLoginProps> = () => {
 
     setLoading(true);
     try {
+      // Just clean the phone number without adding any prefix
+      // The server will handle the formatting
       const cleanPhone = formData.phone.replace(/\D/g, '');
-      const fullPhone = `+91${cleanPhone}`;
       
-      await login(fullPhone, formData.password);
+      console.log('🔐 Attempting login with:', {
+        phone: cleanPhone,
+        phoneOriginal: formData.phone,
+        passwordLength: formData.password.length
+      });
+      
+      // Try with the exact format that worked in our test
+      const phoneWithPrefix = '+91' + cleanPhone;
+      console.log('🔐 Using phone with prefix:', phoneWithPrefix);
+      
+      await login(phoneWithPrefix, formData.password);
       
       // Get user data from localStorage to check role
       const userData = localStorage.getItem('user');
       if (userData) {
         const user = JSON.parse(userData);
+        console.log('✅ Login successful, user data:', {
+          name: user.name,
+          role: user.role,
+          phone: user.phone
+        });
         
         // Redirect based on role
         if (user.role === 'admin') {
+          console.log('🔀 Redirecting to admin dashboard');
           navigate('/admin/dashboard');
         } else if (user.role === 'worker') {
+          console.log('🔀 Redirecting to worker dashboard');
           navigate('/worker/dashboard');
         } else {
           // If somehow a regular user logs in here, redirect to user dashboard
+          console.log('🔀 Redirecting to user dashboard');
           navigate('/dashboard');
         }
       } else {
+        console.log('⚠️ No user data found in localStorage after login');
         navigate('/dashboard');
       }
     } catch (error: any) {
+      console.error('❌ Login error:', error);
+      console.log('❌ Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
       setGeneralError(error.response?.data?.message || error.message || 'Login failed');
     } finally {
       setLoading(false);

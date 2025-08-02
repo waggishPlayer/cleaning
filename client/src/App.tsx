@@ -20,6 +20,7 @@ import TermsAndConditions from './components/TermsAndConditions';
 import RefundPolicy from './components/RefundPolicy';
 import ProfileSettingsPage from './components/ProfileSettingsPage';
 import ResetPassword from './components/ResetPassword';
+import UserDetailsPage from './components/UserDetailsPage';
 
 // Role-based Dashboard Component
 const RoleBasedDashboard: React.FC = () => {
@@ -116,6 +117,14 @@ const AppContent: React.FC = () => {
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
         <Route path="/refund-policy" element={<RefundPolicy />} />
+        <Route 
+          path="/admin/users/:id" 
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <UserDetailsPage />
+            </ProtectedRoute>
+          } 
+        />
         <Route path="*" element={<LandingPage />} />
       </Routes>
     </Router>

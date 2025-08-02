@@ -205,7 +205,7 @@ const BookingPage: React.FC = () => {
             setError('Location information is unavailable.');
             break;
           case error.TIMEOUT:
-            setError('Location request timed out.');
+            setError('Location request timed out. Please check your device location settings and try again, or enter your address manually.');
             break;
           default:
             setError('An unknown error occurred while getting location.');
@@ -213,7 +213,7 @@ const BookingPage: React.FC = () => {
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 30000, // Increased timeout from 10s to 30s
         maximumAge: 60000
       }
     );

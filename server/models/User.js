@@ -76,11 +76,11 @@ const userSchema = new mongoose.Schema(baseUserSchema, {
   timestamps: true
 });
 
-// Add email field only for worker/admin roles
+// Add email field as optional for all roles
 userSchema.add({
   email: {
     type: String,
-    required: function() { return this.role === 'worker' || this.role === 'admin'; },
+    required: false, // Make email optional for all users
     unique: false, // Remove unique constraint
     sparse: true, // Allow multiple null values
     lowercase: true,
@@ -150,4 +150,4 @@ userSchema.statics.findOrCreateByPhone = async function(phone, defaults = {}) {
   return user;
 };
 
-module.exports = mongoose.model('User', userSchema); 
+module.exports = mongoose.model('User', userSchema);

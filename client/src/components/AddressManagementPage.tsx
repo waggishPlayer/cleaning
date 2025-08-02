@@ -28,6 +28,10 @@ interface AddressFormData {
   isDefault: boolean;
   nickname: string;
   notes: string;
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
 }
 
 const AddressManagementPage: React.FC = () => {
@@ -38,7 +42,9 @@ const AddressManagementPage: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [detectingLocation, setDetectingLocation] = useState(false);
   const [formData, setFormData] = useState<AddressFormData>({
     street: '',
     city: '',
@@ -144,7 +150,8 @@ const AddressManagementPage: React.FC = () => {
       country: address.country || 'India',
       isDefault: address.isDefault,
       nickname: address.nickname || '',
-      notes: address.notes || ''
+      notes: address.notes || '',
+      coordinates: address.coordinates
     });
     setShowForm(true);
   };
@@ -162,6 +169,7 @@ const AddressManagementPage: React.FC = () => {
     });
     setEditingAddress(null);
     setError(null);
+    setSuccess(null);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -172,20 +180,107 @@ const AddressManagementPage: React.FC = () => {
     }));
   };
 
-  const handleDetectLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          // You could integrate with a reverse geocoding service here
-          // For now, we'll just show the coordinates
-          alert(`Location detected: ${position.coords.latitude}, ${position.coords.longitude}`);
-        },
-        (error) => {
-          setError('Unable to detect location: ' + error.message);
-        }
-      );
-    } else {
+  const handleDetectLocation = async () => {
+    if (!navigator.geolocation) {
       setError('Geolocation is not supported by this browser');
+      return;
+    }
+
+    setDetectingLocation(true);
+    setError(null);
+
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 30000, // Increased timeout from 10s to 30s
+          maximumAge: 60000
+        });
+      });
+
+      const { latitude, longitude } = position.coords;
+      
+      // Use reverse geocoding to get address details
+      const addressDetails = await reverseGeocode(latitude, longitude);
+      
+      if (addressDetails) {
+        setFormData(prev => ({
+          ...prev,
+          street: addressDetails.street || '',
+          city: addressDetails.city || '',
+          state: addressDetails.state || '',
+          zipCode: addressDetails.zipCode || '',
+          country: addressDetails.country || 'India',
+          coordinates: {
+            lat: latitude,
+            lng: longitude
+          }
+        }));
+        
+        // Show success message
+        setError(null);
+        setSuccess('Location detected successfully! Please review and save the address.');
+      } else {
+        setError('Could not determine address from your location. Please enter manually.');
+      }
+    } catch (error: any) {
+      console.error('Location detection error:', error);
+      if (error.code === 1) {
+        setError('Location access denied. Please allow location access in your browser settings.');
+      } else if (error.code === 2) {
+        setError('Location unavailable. Please check your device location settings.');
+      } else if (error.code === 3) {
+        setError('Location request timed out. Please check your device location settings and try again, or enter your address manually.');
+      } else {
+        setError('Unable to detect your location. Please enter your address manually.');
+      }
+    } finally {
+      setDetectingLocation(false);
+    }
+  };
+
+  const reverseGeocode = async (lat: number, lng: number): Promise<{
+    street?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+  } | null> => {
+    try {
+      // Use OpenStreetMap Nominatim API for reverse geocoding (free and no API key required)
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&accept-language=en`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Reverse geocoding failed');
+      }
+      
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      const address = data.address;
+      
+      // Check if we have at least some basic address information
+      const hasBasicInfo = address.road || address.city || address.town || address.village || address.state;
+      
+      if (!hasBasicInfo) {
+        return null;
+      }
+      
+      return {
+        street: address.road ? `${address.house_number || ''} ${address.road}`.trim() : address.suburb || '',
+        city: address.city || address.town || address.village || address.county || '',
+        state: address.state || address.province || '',
+        zipCode: address.postcode || '',
+        country: address.country || 'India'
+      };
+    } catch (error) {
+      console.error('Reverse geocoding error:', error);
+      return null;
     }
   };
 
@@ -255,6 +350,11 @@ const AddressManagementPage: React.FC = () => {
             {error && (
               <div className="mb-4 p-4 bg-red-900 border border-red-700 rounded-lg text-red-200">
                 {error}
+              </div>
+            )}
+            {success && (
+              <div className="mb-4 p-4 bg-green-900 border border-green-700 rounded-lg text-green-200">
+                {success}
               </div>
             )}
 
@@ -351,6 +451,17 @@ const AddressManagementPage: React.FC = () => {
                       placeholder="Any additional notes about this address..."
                     />
                   </div>
+                  {formData.coordinates && (
+                    <div className="text-xs text-gray-400 bg-gray-800 p-3 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <svg className="w-4 h-4 text-[#00ddff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span>Coordinates detected: {formData.coordinates.lat.toFixed(6)}, {formData.coordinates.lng.toFixed(6)}</span>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex items-center space-x-4">
                     <label className="flex items-center">
                       <input
@@ -362,13 +473,51 @@ const AddressManagementPage: React.FC = () => {
                       />
                       <span className="text-sm text-gray-300">Set as default address</span>
                     </label>
-                    <button
-                      type="button"
-                      onClick={handleDetectLocation}
-                      className="text-sm text-[#c1ff72] hover:text-[#00ddff] transition-colors"
-                    >
-                      Use My Location
-                    </button>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        type="button"
+                        onClick={handleDetectLocation}
+                        disabled={detectingLocation}
+                        className={`text-sm transition-colors flex items-center ${
+                          detectingLocation 
+                            ? 'text-gray-500 cursor-not-allowed' 
+                            : 'text-[#c1ff72] hover:text-[#00ddff]'
+                        }`}
+                        title="Automatically fill address fields using your current location"
+                      >
+                        {detectingLocation && (
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                        )}
+                        {detectingLocation ? 'Detecting Location...' : 'Use My Location'}
+                      </button>
+                      <svg 
+                        className="w-4 h-4 text-gray-500 cursor-help" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                        aria-label="This will use your device's GPS to automatically fill in your address. Make sure to allow location access when prompted."
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {formData.coordinates && (
+                        <div className="flex items-center space-x-1">
+                          <span className="text-xs bg-[#00ddff] text-black px-2 py-1 rounded-full font-medium">
+                            📍 Location Set
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setFormData(prev => ({ ...prev, coordinates: undefined }))}
+                            className="text-xs text-gray-400 hover:text-red-400 transition-colors"
+                            title="Clear detected location"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="flex space-x-4">
                     <button
@@ -471,4 +620,4 @@ const AddressManagementPage: React.FC = () => {
   );
 };
 
-export default AddressManagementPage; 
+export default AddressManagementPage;

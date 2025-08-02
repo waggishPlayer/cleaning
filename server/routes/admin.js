@@ -3,21 +3,123 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Booking = require('../models/Booking');
 const Vehicle = require('../models/Vehicle');
+const PageView = require('../models/PageView');
 const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
+
+// @desc    Track page view
+// @route   POST /api/admin/track-page-view
+// @access  Public
+router.post('/track-page-view', async (req, res) => {
+  try {
+    const { pageName } = req.body;
+    
+    if (!pageName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Page name is required'
+      });
+    }
+    
+    // Create page view record
+    await PageView.create({
+      pageName,
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.ip
+    });
+    
+    res.json({
+      success: true,
+      message: 'Page view tracked successfully'
+    });
+  } catch (error) {
+    console.error('Track page view error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error tracking page view',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Get page view analytics
+// @route   GET /api/admin/page-view-analytics
+// @access  Private/Admin
+router.get('/page-view-analytics', protect, authorize('admin'), async (req, res) => {
+  try {
+    // Get total counts
+    const landingPageViews = await PageView.countDocuments({ pageName: 'landing' });
+    const registerPageViews = await PageView.countDocuments({ pageName: 'register' });
+    
+    // Get daily counts for the last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const dailyViews = await PageView.aggregate([
+      {
+        $match: {
+          timestamp: { $gte: thirtyDaysAgo }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            date: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } },
+            pageName: '$pageName'
+          },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { '_id.date': 1 }
+      }
+    ]);
+    
+    res.json({
+      success: true,
+      data: {
+        landingPageViews,
+        registerPageViews,
+        dailyViews
+      }
+    });
+  } catch (error) {
+    console.error('Get page view analytics error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching page view analytics',
+      error: error.message
+    });
+  }
+});
+
 
 // Public routes (no authentication required)
 // Admin registration endpoint (public - allows first admin to be created)
 router.post('/register-admin', async (req, res) => {
   try {
     let { name, email, password, phone, address } = req.body;
-    if (!name || !email || !password) {
-      return res.status(400).json({ success: false, message: 'All fields are required' });
+    if (!name || !password) {
+      return res.status(400).json({ success: false, message: 'Name and password are required' });
     }
-    const existing = await User.findOne({ email });
-    if (existing) {
-      return res.status(400).json({ success: false, message: 'Email already exists' });
+    
+    // Generate a default email if not provided
+    if (!email) {
+      email = `admin_${Date.now()}@caarvo.com`;
+    }
+    
+    // Ensure email is valid format for admin users
+    if (email && !email.match(/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/)) {
+      email = `admin_${Date.now()}@caarvo.com`;
+    }
+    
+    // Check if email already exists only if email is provided
+    if (email) {
+      const existing = await User.findOne({ email });
+      if (existing) {
+        return res.status(400).json({ success: false, message: 'Email already exists' });
+      }
     }
     // If phone is not provided, generate a unique dummy phone
     if (!phone) {
@@ -28,6 +130,14 @@ router.post('/register-admin', async (req, res) => {
         const phoneExists = await User.findOne({ phone });
         if (!phoneExists) unique = true;
       }
+    } else {
+      // Clean the phone number to ensure consistent format
+      phone = phone.replace(/\D/g, '');
+      // If it's a 10-digit number without country code, add 91 prefix
+      if (phone.length === 10 && !phone.startsWith('91')) {
+        phone = '91' + phone;
+      }
+      console.log('📱 Formatted admin phone number:', phone);
     }
     const user = await User.create({
       name,
@@ -45,17 +155,22 @@ router.post('/register-admin', async (req, res) => {
   }
 });
 
-// Admin can register a worker (requires admin auth)
+// Admin can register a worker (protected route)
 router.post('/register-worker', protect, authorize('admin'), async (req, res) => {
   try {
     let { name, email, password, phone, address } = req.body;
-    if (!name || !email || !password) {
-      return res.status(400).json({ success: false, message: 'All fields are required' });
+    if (!name || !password) {
+      return res.status(400).json({ success: false, message: 'Name and password are required' });
     }
-    const existing = await User.findOne({ email });
-    if (existing) {
-      return res.status(400).json({ success: false, message: 'Email already exists' });
+    
+    // Check if email exists and is valid
+    if (email) {
+      const existing = await User.findOne({ email });
+      if (existing) {
+        return res.status(400).json({ success: false, message: 'Email already exists' });
+      }
     }
+    
     // If phone is not provided, generate a unique dummy phone
     if (!phone) {
       let unique = false;
@@ -65,15 +180,22 @@ router.post('/register-worker', protect, authorize('admin'), async (req, res) =>
         if (!phoneExists) unique = true;
       }
     }
-    const user = await User.create({
+    // Create user object with required fields
+    const userData = {
       name,
-      email,
       password: password, // Let the pre-save hook handle hashing
       phone,
       role: 'worker',
       isActive: true,
       address: address || undefined
-    });
+    };
+    
+    // Only add email if it's provided
+    if (email) {
+      userData.email = email;
+    }
+    
+    const user = await User.create(userData);
     res.json({ success: true, message: 'Worker registered', data: { user } });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -329,6 +451,106 @@ router.put('/bookings/:id/status', protect, authorize('admin'), async (req, res)
   }
 });
 
+// @desc    Delete booking (admin only)
+// @route   DELETE /api/admin/bookings/:id
+// @access  Private/Admin
+router.delete('/bookings/:id', protect, authorize('admin'), async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+    
+    await Booking.deleteOne({ _id: booking._id });
+    
+    res.json({
+      success: true,
+      message: 'Booking deleted successfully',
+      data: {}
+    });
+  } catch (error) {
+    console.error('Delete booking error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting booking',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Get user details (admin only)
+// @route   GET /api/admin/users/:id
+// @access  Private/Admin
+router.get('/users/:id', protect, authorize('admin'), async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('-password');
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: user
+    });
+  } catch (error) {
+    console.error('Get user details error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching user details',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Get user bookings (admin only)
+// @route   GET /api/admin/users/:id/bookings
+// @access  Private/Admin
+router.get('/users/:id/bookings', protect, authorize('admin'), async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    let bookings;
+    if (user.role === 'worker') {
+      // Get bookings assigned to this worker
+      bookings = await Booking.find({ worker: user._id })
+        .populate('customer', 'name email phone')
+        .populate('vehicle', 'make model year licensePlate')
+        .sort({ scheduledDate: -1 });
+    } else {
+      // Get bookings created by this user
+      bookings = await Booking.find({ customer: user._id })
+        .populate('worker', 'name phone')
+        .populate('vehicle', 'make model year licensePlate')
+        .sort({ scheduledDate: -1 });
+    }
+    
+    res.json({
+      success: true,
+      count: bookings.length,
+      data: bookings
+    });
+  } catch (error) {
+    console.error('Get user bookings error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching user bookings',
+      error: error.message
+    });
+  }
+});
+
 // @desc    Update user (admin only)
 // @route   PUT /api/admin/users/:id
 // @access  Private/Admin
@@ -543,4 +765,4 @@ router.get('/analytics', protect, authorize('admin'), async (req, res) => {
   }
 });
 
-module.exports = router; 
+module.exports = router;

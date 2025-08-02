@@ -10,7 +10,8 @@ import {
   RegisterData,
   VehicleFormData,
   BookingFormData,
-  Analytics
+  Analytics,
+  PageViewData
 } from '../types';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
@@ -89,12 +90,34 @@ async sendWhatsAppOTP(phone: string): Promise<ApiResponse<null>> {
   }
 
   async loginWithPassword(phone: string, password: string): Promise<AuthResponse> {
-    const response: AxiosResponse<AuthResponse> = await this.api.post('/auth/login-password', { phone, password });
-    return response.data;
+    console.log('📤 API Service: Sending login request to /auth/login-password with:', {
+      phone,
+      passwordLength: password.length
+    });
+    
+    try {
+      const response: AxiosResponse<AuthResponse> = await this.api.post('/auth/login-password', { phone, password });
+      console.log('✅ API Service: Login response received:', {
+        status: response.status,
+        success: response.data.success,
+        message: response.data.message,
+        hasData: !!response.data.data
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ API Service: Login request failed:', error);
+      if (error.response) {
+        console.log('📋 API Service: Error response details:', {
+          status: error.response.status,
+          data: error.response.data
+        });
+      }
+      throw error;
+    }
   }
 
   async registerAdmin(data: { name: string; email: string; password: string; phone: string; address: { street: string; city: string; state: string; zipCode: string }; isActive?: boolean }): Promise<any> {
-    // Use plain axios to avoid sending Authorization header
+    // Keep using plain axios for admin registration as it's a public endpoint
     const response: AxiosResponse<any> = await axios.post(`${API_BASE_URL}/admin/register-admin`, data, {
       headers: { 'Content-Type': 'application/json' }
     });
@@ -217,7 +240,22 @@ async sendWhatsAppOTP(phone: string): Promise<ApiResponse<null>> {
   }
 
   async cancelBooking(id: string, reason?: string): Promise<ApiResponse<null>> {
-    const response: AxiosResponse<ApiResponse<null>> = await this.api.put(`/bookings/${id}/cancel`, { reason });
+    const response: AxiosResponse<ApiResponse<null>> = await this.api.put(`/admin/bookings/${id}/status`, { status: 'cancelled', reason });
+    return response.data;
+  }
+
+  async deleteBooking(id: string): Promise<ApiResponse<null>> {
+    const response: AxiosResponse<ApiResponse<null>> = await this.api.delete(`/admin/bookings/${id}`);
+    return response.data;
+  }
+
+  async getUserDetails(id: string): Promise<ApiResponse<User>> {
+    const response: AxiosResponse<ApiResponse<User>> = await this.api.get(`/admin/users/${id}`);
+    return response.data;
+  }
+
+  async getUserBookings(userId: string): Promise<ApiResponse<Booking[]>> {
+    const response: AxiosResponse<ApiResponse<Booking[]>> = await this.api.get(`/admin/users/${userId}/bookings`);
     return response.data;
   }
 
@@ -239,10 +277,13 @@ async sendWhatsAppOTP(phone: string): Promise<ApiResponse<null>> {
 
   // Admin endpoints
   async registerWorker(data: { name: string; email: string; password: string; phone: string; address: { street: string; city: string; state: string; zipCode: string }; isActive?: boolean }): Promise<any> {
-    // Use plain axios to avoid sending Authorization header
-    const response: AxiosResponse<any> = await axios.post(`${API_BASE_URL}/admin/register-worker`, data, {
-      headers: { 'Content-Type': 'application/json' }
-    });
+    // Use authenticated API instance to include the authorization token
+    // Ensure we're using the authenticated API instance with proper headers
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('Authentication required to register worker');
+    }
+    const response: AxiosResponse<any> = await this.api.post('/admin/register-worker', data);
     return response.data;
   }
 
@@ -265,6 +306,17 @@ async sendWhatsAppOTP(phone: string): Promise<ApiResponse<null>> {
     const response: AxiosResponse<ApiResponse<Analytics>> = await this.api.get('/admin/analytics', {
       params: { period },
     });
+    return response.data;
+  }
+
+  // Page view tracking methods
+  async trackPageView(pageName: string): Promise<ApiResponse<null>> {
+    const response: AxiosResponse<ApiResponse<null>> = await this.api.post('/admin/track-page-view', { pageName });
+    return response.data;
+  }
+
+  async getPageViewAnalytics(): Promise<ApiResponse<PageViewData>> {
+    const response: AxiosResponse<ApiResponse<PageViewData>> = await this.api.get('/admin/page-view-analytics');
     return response.data;
   }
 
@@ -304,4 +356,4 @@ async sendWhatsAppOTP(phone: string): Promise<ApiResponse<null>> {
 }
 
 export const apiService = new ApiService();
-export default apiService; 
+export default apiService;

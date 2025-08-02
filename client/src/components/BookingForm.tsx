@@ -26,6 +26,8 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onCancel, isLoading
   const [loadingAddresses, setLoadingAddresses] = useState(true);
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
   const [addingNewAddress, setAddingNewAddress] = useState(false);
+  const [detectingLocation, setDetectingLocation] = useState(false);
+  const [locationError, setLocationError] = useState<string>('');
   const [formData, setFormData] = useState<BookingFormData>({
     vehicleId: '',
     serviceType: 'exterior',
@@ -117,6 +119,108 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onCancel, isLoading
       // Optionally handle error
     } finally {
       setLoadingAddresses(false);
+    }
+  };
+
+  // Auto-detect location function
+  const detectLocation = async () => {
+    setDetectingLocation(true);
+    setLocationError('');
+    
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation is not supported by this browser.');
+      setDetectingLocation(false);
+      return;
+    }
+
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 30000, // Increased timeout from 10s to 30s
+          maximumAge: 60000
+        });
+      });
+
+      const { latitude, longitude } = position.coords;
+      
+      // Use reverse geocoding to get address from coordinates
+      const address = await reverseGeocode(latitude, longitude);
+      
+      if (address) {
+        setFormData(prev => ({
+          ...prev,
+          location: {
+            address: address.address,
+            city: address.city,
+            state: address.state,
+            zipCode: address.zipCode
+          }
+        }));
+        setSelectedAddressId('new');
+        setAddingNewAddress(true);
+      } else {
+        setLocationError('Could not determine address from location. Please enter manually.');
+      }
+    } catch (error) {
+      console.error('Error getting location:', error);
+      if (error instanceof GeolocationPositionError) {
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            setLocationError('Location access denied. Please enable location services and try again.');
+            break;
+          case error.POSITION_UNAVAILABLE:
+            setLocationError('Location information unavailable. Please try again.');
+            break;
+          case error.TIMEOUT:
+            setLocationError('Location request timed out. Please check your device location settings and try again, or enter your address manually.');
+            break;
+          default:
+            setLocationError('Error detecting location. Please enter address manually.');
+        }
+      } else {
+        setLocationError('Error detecting location. Please enter address manually.');
+      }
+    } finally {
+      setDetectingLocation(false);
+    }
+  };
+
+  // Reverse geocoding function using OpenStreetMap Nominatim API
+  const reverseGeocode = async (lat: number, lng: number): Promise<{
+    address: string;
+    city: string;
+    state: string;
+    zipCode: string;
+  } | null> => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&zoom=18`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Reverse geocoding failed');
+      }
+      
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      const address = data.address;
+      
+      return {
+        address: address.house_number && address.road 
+          ? `${address.house_number} ${address.road}`
+          : address.road || address.suburb || address.neighbourhood || '',
+        city: address.city || address.town || address.village || address.county || '',
+        state: address.state || address.province || '',
+        zipCode: address.postcode || ''
+      };
+    } catch (error) {
+      console.error('Reverse geocoding error:', error);
+      return null;
     }
   };
 
@@ -329,6 +433,37 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onCancel, isLoading
                   <option value="new">Add New Address</option>
                 </select>
               ) : null}
+              
+              {/* Auto-detect location button */}
+              {(addingNewAddress || addresses.length === 0) && (
+                <div className="mb-4">
+                  <button
+                    type="button"
+                    onClick={detectLocation}
+                    disabled={detectingLocation}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {detectingLocation ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Detecting Location...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        Auto-detect My Location
+                      </>
+                    )}
+                  </button>
+                  {locationError && (
+                    <p className="text-red-600 text-sm mt-2">{locationError}</p>
+                  )}
+                </div>
+              )}
+              
               {(addingNewAddress || addresses.length === 0) && (
                 <>
                   <input

@@ -611,27 +611,74 @@ router.post('/register-user', async (req, res) => {
 // @access  Public
 router.post('/login-password', async (req, res) => {
   try {
+    console.log('🔐 Login request received:', {
+      body: req.body,
+      headers: req.headers,
+      method: req.method,
+      url: req.url
+    });
+    
     const { phone, password } = req.body;
 
     if (!phone || !password) {
+      console.log('❌ Missing phone or password');
       return res.status(400).json({
         success: false,
         message: 'Phone and password are required'
       });
     }
 
-    // Find user by phone
-    const user = await User.findOne({ phone }).select('+password');
+    // Clean the phone number to ensure consistent format
+    let cleanPhone = phone.replace(/\D/g, '');
+    // If it starts with 91, keep it as is, otherwise add 91 prefix for Indian numbers
+    if (!cleanPhone.startsWith('91') && cleanPhone.length === 10) {
+      cleanPhone = '91' + cleanPhone;
+    }
+    console.log('📱 Cleaned phone number for login:', cleanPhone);
+
+    // Find user by phone - try both formats (with and without 91 prefix)
+    let user = await User.findOne({ phone: cleanPhone }).select('+password');
+    
+    // If not found, try without the 91 prefix
+    if (!user && cleanPhone.startsWith('91')) {
+      const alternativePhone = cleanPhone.substring(2);
+      user = await User.findOne({ phone: alternativePhone }).select('+password');
+      console.log('🔍 Trying alternative phone format:', alternativePhone);
+    }
+    
+    // If still not found, try with +91 prefix
     if (!user) {
-      return res.status(404).json({
+      const alternativePhone = '+' + cleanPhone;
+      user = await User.findOne({ phone: alternativePhone }).select('+password');
+      console.log('🔍 Trying alternative phone format with +:', alternativePhone);
+    }
+    
+    console.log('🔍 Database lookup result:', {
+      phone,
+      cleanPhone,
+      userFound: !!user,
+      userName: user?.name,
+      userRole: user?.role,
+      hasPassword: !!user?.password
+    });
+    
+    if (!user) {
+      console.log('❌ User not found with phone:', phone);
+      return res.status(401).json({
         success: false,
-        message: 'User not found with this phone number'
+        message: 'Invalid phone number or password'
       });
     }
 
     // Check password
     const isMatch = await user.comparePassword(password);
+    console.log('🔐 Password check result:', {
+      providedPassword: password,
+      passwordMatch: isMatch
+    });
+    
     if (!isMatch) {
+      console.log('❌ Password mismatch for user:', user.name);
       return res.status(401).json({
         success: false,
         message: 'Invalid phone number or password'

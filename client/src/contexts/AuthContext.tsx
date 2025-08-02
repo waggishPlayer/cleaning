@@ -44,29 +44,64 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (emailOrPhone: string, passwordOrOtp: string) => {
     try {
+      console.log('🔐 Login attempt:', { 
+        emailOrPhone, 
+        passwordLength: passwordOrOtp.length,
+        isEmail: emailOrPhone.includes('@')
+      });
       let response;
       
-      // Check if it's email (contains @) or phone number
-      if (emailOrPhone.includes('@')) {
-        // Email login for staff
-        response = await apiService.login({ email: emailOrPhone, password: passwordOrOtp });
+      // Always use phone login with password regardless of input format
+      console.log('📱 Using phone login with password');
+      // Clean the phone number to ensure consistent format
+      // Keep the original format if it already has a + prefix
+      let phoneToUse = emailOrPhone;
+      
+      // If it's already in the format we want (+91XXXXXXXXXX), use it directly
+      if (emailOrPhone.startsWith('+91')) {
+        console.log('📱 Phone already has +91 prefix, using as is:', emailOrPhone);
       } else {
-        // Phone login for users
-        response = await apiService.loginWithPhone({ phone: emailOrPhone, otp: passwordOrOtp });
+        // Otherwise clean it and use as is (server will handle formatting)
+        phoneToUse = emailOrPhone.replace(/\D/g, '');
+        console.log('📱 Cleaned phone for login:', phoneToUse);
       }
+      
+      // Phone login with password for all users
+      console.log('📤 Sending login request with phone:', phoneToUse);
+      response = await apiService.loginWithPassword(phoneToUse, passwordOrOtp);
+      
+      console.log('✅ Login response received:', { 
+        success: response.success, 
+        hasData: !!response.data,
+        message: response.message
+      });
       
       if (response.success && response.data) {
         const { user: userData, token: tokenData } = response.data;
+        console.log('👤 Setting user data:', { 
+          name: userData.name, 
+          role: userData.role,
+          phone: userData.phone
+        });
         setUser(userData);
         setToken(tokenData);
         localStorage.setItem('token', tokenData);
         localStorage.setItem('user', JSON.stringify(userData));
+        console.log('✅ Login completed successfully');
         // Do NOT call getProfile here
       } else {
+        console.log('❌ Login failed:', response.message);
         throw new Error(response.message || 'Login failed');
       }
-    } catch (error) {
-      console.error('Login error:', error);
+    } catch (error: any) {
+      console.error('❌ Login error:', error);
+      // Log more details about the error
+      if (error.response) {
+        console.log('📋 Error response details:', {
+          status: error.response.status,
+          data: error.response.data
+        });
+      }
       throw error;
     }
   };
@@ -154,4 +189,4 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
-}; 
+};

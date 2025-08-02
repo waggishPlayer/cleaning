@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useScroll, useTransform, motion as motionDiv } from 'framer-motion';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
+import PageViewTracker from './PageViewTracker';
 
 const features = [
   {
@@ -38,6 +39,7 @@ const LandingPage: React.FC = () => {
 
   return (
     <>
+      <PageViewTracker pageName="landing" />
       {/* Foreground Content */}
       <div className="min-h-screen flex flex-col bg-black text-[color:#00ddff] relative" style={{ zIndex: 1 }}>
         {/* Lime strip at the top */}
@@ -368,4 +370,4 @@ const LandingPage: React.FC = () => {
     );
   };
 
-  export default LandingPage; 
+  export default LandingPage;
