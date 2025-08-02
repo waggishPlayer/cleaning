@@ -96,7 +96,8 @@ router.post('/', protect, authorize('user'), async (req, res) => {
       scheduledTime,
       location,
       notes,
-      price
+      price,
+      paymentMethod
     } = req.body;
 
     // Verify vehicle belongs to user
@@ -130,8 +131,11 @@ router.post('/', protect, authorize('user'), async (req, res) => {
       scheduledTime,
       location,
       notes: { customer: notes },
-      price
+      price,
+      paymentMethod: paymentMethod || 'cash' // Default to cash if not specified
     });
+    
+    console.log('Created booking with payment method:', paymentMethod || 'cash');
 
     const populatedBooking = await Booking.findById(booking._id)
       .populate('vehicle', 'make model year licensePlate color');
@@ -304,4 +308,54 @@ router.put('/:id/review', protect, authorize('user'), async (req, res) => {
   }
 });
 
-module.exports = router; 
+// @desc    Update booking payment status
+// @route   PUT /api/bookings/:id/payment
+// @access  Private
+router.put('/:id/payment', protect, async (req, res) => {
+  try {
+    const { paymentStatus, transactionId } = req.body;
+
+    // Find booking by ID
+    const booking = await Booking.findById(req.params.id);
+    
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+
+    // Verify user is authorized (either the customer or an admin)
+    if (booking.customer.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to update this booking'
+      });
+    }
+
+    // Update payment status
+    booking.paymentStatus = paymentStatus;
+    
+    // Update transaction ID if provided
+    if (transactionId) {
+      booking.phonePePaymentId = transactionId;
+    }
+
+    await booking.save();
+
+    res.json({
+      success: true,
+      message: 'Payment status updated successfully',
+      data: booking
+    });
+  } catch (error) {
+    console.error('Update payment status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating payment status',
+      error: error.message
+    });
+  }
+});
+
+module.exports = router;

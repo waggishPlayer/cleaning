@@ -17,7 +17,7 @@ const bookingSchema = new mongoose.Schema({
   },
   serviceType: {
     type: String,
-    enum: ['exterior', 'interior', 'full-service', 'premium'],
+    enum: ['exterior', 'interior', 'full-service', 'premium', 'deep-clean', 'detail-clean', 'demo'],
     required: [true, 'Service type is required']
   },
   scheduledDate: {
@@ -62,8 +62,28 @@ const bookingSchema = new mongoose.Schema({
   },
   paymentStatus: {
     type: String,
-    enum: ['pending', 'paid', 'refunded'],
+    enum: ['pending', 'completed', 'failed', 'refunded'],
     default: 'pending'
+  },
+  razorpayOrderId: {
+    type: String
+  },
+  razorpayPaymentId: {
+    type: String
+  },
+  razorpaySignature: {
+    type: String
+  },
+  phonePeTransactionId: {
+    type: String
+  },
+  phonePePaymentId: {
+    type: String
+  },
+  paymentMethod: {
+    type: String,
+    enum: ['cash', 'razorpay', 'phonepe'],
+    default: 'cash'
   },
   notes: {
     customer: {
@@ -120,4 +140,4 @@ bookingSchema.virtual('canBeCancelled').get(function() {
   return this.status === 'pending' && hoursDiff > 2;
 });
 
-module.exports = mongoose.model('Booking', bookingSchema); 
+module.exports = mongoose.model('Booking', bookingSchema);

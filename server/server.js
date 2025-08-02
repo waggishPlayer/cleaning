@@ -5,12 +5,22 @@ const dotenv = require('dotenv');
 const path = require('path');
 
 // Load environment variables
-const configFile = process.env.NODE_ENV === 'production' ? './config.prod.env' : './config.env';
+// Set NODE_ENV explicitly if not set
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = 'development';
+}
+
+const configFile = process.env.NODE_ENV === 'production' ? './config.prod.env' : './.env.development';
 dotenv.config({ path: configFile });
 console.log(`Loading config from: ${configFile}`);
 console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
 console.log(`FRONTEND_URL: ${process.env.FRONTEND_URL}`);
 console.log(`API running on port: ${process.env.PORT || 5000}`);
+
+// Log PhonePe configuration
+console.log(`PhonePe Merchant ID: ${process.env.PHONEPE_MERCHANT_ID}`);
+console.log(`PhonePe Client ID: ${process.env.PHONEPE_CLIENT_ID}`);
+console.log(`PhonePe Base URL: ${process.env.PHONEPE_BASE_URL}`);
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -97,4 +107,4 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-}); 
+});

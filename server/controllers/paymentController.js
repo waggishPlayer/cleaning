@@ -2,15 +2,33 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const Booking = require('../models/Booking');
 
-// Initialize Razorpay instance
-const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+// Initialize Razorpay instance if credentials are available
+let razorpay;
+try {
+    if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+        razorpay = new Razorpay({
+            key_id: process.env.RAZORPAY_KEY_ID,
+            key_secret: process.env.RAZORPAY_KEY_SECRET,
+        });
+        console.log('✅ Razorpay initialized successfully');
+    } else {
+        console.log('⚠️ Razorpay credentials not found - Razorpay payments will be unavailable');
+    }
+} catch (error) {
+    console.error('❌ Failed to initialize Razorpay:', error.message);
+}
 
 // Create Razorpay order
 const createOrder = async (req, res) => {
     try {
+        // Check if Razorpay is initialized
+        if (!razorpay) {
+            return res.status(503).json({
+                success: false,
+                message: 'Razorpay payment service is currently unavailable'
+            });
+        }
+        
         const { amount, currency = 'INR', bookingId } = req.body;
 
         // Validate required fields

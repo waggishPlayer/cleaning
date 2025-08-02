@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
 import { Car, Calendar, MapPin, Check, Plus, Navigation, CreditCard, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 
 import { Vehicle } from '../types';
@@ -35,6 +36,7 @@ interface BookingData {
 }
 
 const BookingPage: React.FC = () => {
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -50,7 +52,7 @@ const BookingPage: React.FC = () => {
     address: null,
     dateTime: { date: '', time: '' },
     specialInstructions: '',
-    paymentMethod: 'cash'
+    paymentMethod: 'phonepe'
   });
 
   const [newVehicle, setNewVehicle] = useState({
@@ -169,19 +171,23 @@ const BookingPage: React.FC = () => {
         try {
           const { latitude, longitude } = position.coords;
           
-          // Use reverse geocoding to get address from coordinates
+          // Use reverse geocoding to get address from coordinates using OpenStreetMap Nominatim API
+          // This provides more accurate and detailed address information
           const response = await fetch(
-            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&zoom=18`
           );
           
           if (response.ok) {
             const data = await response.json();
+            const address = data.address;
             
             setNewAddress({
-              street: data.locality || '',
-              city: data.city || '',
-              state: data.principalSubdivision || '',
-              zipCode: data.postcode || '',
+              street: address.house_number && address.road 
+                ? `${address.house_number} ${address.road}`
+                : address.road || address.suburb || address.neighbourhood || '',
+              city: address.city || address.town || address.village || address.county || '',
+              state: address.state || address.province || '',
+              zipCode: address.postcode || '',
               isDefault: false
             });
             
@@ -252,21 +258,128 @@ const BookingPage: React.FC = () => {
   };
 
   const handleBookingSubmit = async () => {
-    if (bookingData.paymentMethod === 'cash') {
-      // Handle cash payment - create booking directly
-      await createBookingDirect();
+    console.log('%c PAYMENT SUBMISSION', 'background: #ff0000; color: #ffffff; font-size: 20px');
+    console.log('Handling booking submission with payment method:', bookingData.paymentMethod);
+    console.log('Booking data:', bookingData);
+    
+    // Make sure we're using PhonePe payment
+    if (bookingData.paymentMethod === 'phonepe') {
+      await initiatePhonePePayment();
+    } else {
+      // Force PhonePe payment method
+      setBookingData(prev => ({ ...prev, paymentMethod: 'phonepe' }));
+      await initiatePhonePePayment();
     }
   };
 
-  const createBookingDirect = async () => {
+  const initiatePhonePePayment = async () => {
     setLoading(true);
     try {
-      const serviceTypeMap: { [key: string]: 'exterior' | 'full-service' | 'interior' | 'premium' } = {
+      // Map service names to valid enum values in the Booking model
+      const serviceTypeMap: { [key: string]: string } = {
         'Wash & Vacuum': 'exterior',
         'Full Detail': 'full-service',
         'Interior Deep Clean': 'interior',
         'Exterior Wash & Wax': 'exterior',
-        'Premium Package': 'premium'
+        'Premium Package': 'premium',
+        'Deep Clean': 'deep-clean',
+        'Detail Clean': 'detail-clean',
+        'Demo Wash': 'demo'
+      };
+
+      const serviceType = serviceTypeMap[bookingData.service?.name || ''] || 'exterior';
+
+      if (!bookingData.vehicle?._id) {
+        setError('Please select a vehicle');
+        return;
+      }
+
+      // Validate all required fields before proceeding
+      if (!bookingData.dateTime.date || !bookingData.dateTime.time) {
+        setError('Please select a date and time');
+        return;
+      }
+
+      if (!bookingData.address) {
+        setError('Please select a service location');
+        return;
+      }
+
+      // First create the booking
+      const bookingPayload = {
+        vehicleId: bookingData.vehicle._id,
+        serviceType: serviceType,
+        scheduledDate: bookingData.dateTime.date,
+        scheduledTime: bookingData.dateTime.time,
+        location: {
+          address: bookingData.address?.street || '',
+          city: bookingData.address?.city || '',
+          state: bookingData.address?.state || '',
+          zipCode: bookingData.address?.zipCode || ''
+        },
+        notes: bookingData.specialInstructions,
+        price: bookingData.service?.price || 0,
+        paymentMethod: 'phonepe'
+      };
+
+      console.log('Creating booking with payload:', bookingPayload);
+      const bookingResponse = await apiService.createBooking(bookingPayload);
+      console.log('Booking response:', bookingResponse);
+      
+      if (bookingResponse.success && bookingResponse.data) {
+        // Now create PhonePe payment order
+        const amount = bookingData.service?.price || 0;
+        console.log('Creating PhonePe order with amount:', amount);
+        const paymentResponse = await apiService.createPhonePeOrder(bookingResponse.data._id, amount);
+        console.log('PhonePe payment response:', paymentResponse);
+        
+        if (paymentResponse.success && paymentResponse.data) {
+          // Store transaction ID in session storage for reference
+          if (paymentResponse.data.transactionId) {
+            sessionStorage.setItem('phonePeTransactionId', paymentResponse.data.transactionId);
+            sessionStorage.setItem('bookingId', bookingResponse.data._id);
+            console.log('Stored transaction ID in session storage:', paymentResponse.data.transactionId);
+          }
+          
+          // Show loading message before redirect
+          setError('');
+          
+          // Redirect to PhonePe payment page
+          console.log('Redirecting to PhonePe payment URL:', paymentResponse.data.paymentUrl);
+          window.location.href = paymentResponse.data.paymentUrl;
+          
+          // Note: The redirect to payment status page will happen after PhonePe redirects back to our site
+          // This is handled by the PhonePe redirect URL which points to our /payment-status page
+        } else {
+          console.error('Failed to create PhonePe payment:', paymentResponse.error);
+          setError(paymentResponse.error || 'Failed to create payment');
+        }
+      } else {
+        console.error('Failed to create booking:', bookingResponse.error);
+        setError(bookingResponse.error || 'Failed to create booking');
+      }
+    } catch (error: any) {
+      console.error('Error in payment process:', error);
+      setError(error.message || 'Error processing payment');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // This function is only called when cash payment is selected
+  const createBookingDirect = async () => {
+    setLoading(true);
+    try {
+      // Map service names to valid enum values in the Booking model
+      const serviceTypeMap: { [key: string]: string } = {
+        'Wash & Vacuum': 'exterior',
+        'Full Detail': 'full-service',
+        'Interior Deep Clean': 'interior',
+        'Exterior Wash & Wax': 'exterior',
+        'Premium Package': 'premium',
+        'Deep Clean': 'deep-clean',
+        'Detail Clean': 'detail-clean',
+        'Demo Wash': 'demo'
       };
 
       const serviceType = serviceTypeMap[bookingData.service?.name || ''] || 'exterior';
@@ -288,7 +401,8 @@ const BookingPage: React.FC = () => {
           zipCode: bookingData.address?.zipCode || ''
         },
         notes: bookingData.specialInstructions,
-        price: bookingData.service?.price || 0
+        price: bookingData.service?.price || 0,
+        paymentMethod: 'cash'
       };
 
       const response = await apiService.createBooking(bookingPayload);
@@ -316,7 +430,7 @@ const BookingPage: React.FC = () => {
       address: null,
       dateTime: { date: '', time: '' },
       specialInstructions: '',
-      paymentMethod: 'cash'
+      paymentMethod: 'phonepe'
     });
     setError('');
   };
@@ -723,51 +837,46 @@ const BookingPage: React.FC = () => {
             </div>
 
             <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-4 flex items-center">
-                <CreditCard className="mr-2" /> Payment Method
-              </h3>
+              <h3 className="text-lg font-semibold mb-3">Payment Method</h3>
               
               <div className="space-y-3">
-                <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50 bg-blue-500 text-white border-blue-500">
                   <input
                     type="radio"
-                    name="paymentMethod"
-                    value="card"
-                    checked={bookingData.paymentMethod === 'card'}
-                    onChange={(e) => setBookingData({ ...bookingData, paymentMethod: e.target.value })}
-                    className="mr-3"
+                    name="payment"
+                    value="phonepe"
+                    checked={bookingData.paymentMethod === 'phonepe'}
+                    onChange={() => setBookingData({ ...bookingData, paymentMethod: 'phonepe' })}
+                    className="text-blue-600"
                   />
-                  <CreditCard className="mr-2" size={20} />
-                  Online Payment (UPI, Card, Net Banking)
+                  <img src="/phonepe-logo.png" alt="PhonePe" className="w-5 h-5 ml-3" onError={(e) => { e.currentTarget.src = 'https://www.phonepe.com/webstatic/static/favicon-48x48-c1244bed07.png'; }} />
+                  <span className="ml-3 font-bold">PhonePe (Recommended)</span>
                 </label>
                 
-                <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                <label className="flex items-center space-x-3 p-3 border rounded-lg cursor-not-allowed bg-gray-100 text-gray-500">
                   <input
                     type="radio"
-                    name="paymentMethod"
+                    name="payment"
                     value="cash"
-                    checked={bookingData.paymentMethod === 'cash'}
-                    onChange={(e) => setBookingData({ ...bookingData, paymentMethod: e.target.value })}
-                    className="mr-3"
+                    disabled
+                    className="text-gray-400"
                   />
-                  💵 Cash on Service
+                  <div className="w-5 h-5 bg-gray-400 rounded text-white text-xs flex items-center justify-center font-bold">₹</div>
+                  <span>Cash on Service (Currently Unavailable)</span>
                 </label>
               </div>
             </div>
 
             <button
               onClick={handleBookingSubmit}
-              disabled={loading}
-              className="w-full bg-blue-500 text-white p-4 rounded-lg text-lg font-semibold hover:bg-blue-600 disabled:opacity-50"
+              className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold text-lg"
             >
-              {loading ? 'Processing...' : `Confirm Booking - $${bookingData.service?.price}`}
+              Proceed to Payment - ₹{bookingData.service?.price}
             </button>
             
-            {bookingData.paymentMethod === 'cash' && (
-              <p className="text-sm text-gray-600 mt-2 text-center">
-                You will pay cash when our team arrives at your location
-              </p>
-            )}
+            <p className="text-sm text-gray-600 mt-2 text-center">
+              You will be redirected to PhonePe to complete your payment
+            </p>
           </div>
         );
 

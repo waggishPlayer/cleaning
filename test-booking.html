@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Booking Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Booking Form</h1>
+    
+    <div class="form-group">
+        <label for="paymentMethod">Payment Method:</label>
+        <select id="paymentMethod">
+            <option value="cash">Cash</option>
+            <option value="phonepe">PhonePe</option>
+        </select>
+    </div>
+    
+    <button id="submitBtn">Create Booking</button>
+    
+    <div id="result"></div>
+    
+    <script>
+        document.getElementById('submitBtn').addEventListener('click', async () => {
+            const paymentMethod = document.getElementById('paymentMethod').value;
+            
+            const bookingData = {
+                vehicleId: '65e5c3e6e7e3e3e3e3e3e3e3',
+                serviceType: 'Wash & Vacuum',
+                scheduledDate: '2023-12-01',
+                scheduledTime: '10:00 AM',
+                location: {
+                    address: '123 Test St',
+                    city: 'Test City',
+                    state: 'TS',
+                    zipCode: '12345'
+                },
+                notes: 'Test booking',
+                price: 25,
+                paymentMethod: paymentMethod
+            };
+            
+            try {
+                // Send to our test endpoint
+                const response = await fetch('http://localhost:5002/test-booking', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(bookingData)
+                });
+                
+                const data = await response.json();
+                
+                const resultDiv = document.getElementById('result');
+                resultDiv.textContent = 'Request sent with payment method: ' + paymentMethod;
+                resultDiv.style.display = 'block';
+                
+                console.log('Response:', data);
+                console.log('Sent booking data:', bookingData);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error sending request: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>

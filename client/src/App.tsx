@@ -21,6 +21,8 @@ import RefundPolicy from './components/RefundPolicy';
 import ProfileSettingsPage from './components/ProfileSettingsPage';
 import ResetPassword from './components/ResetPassword';
 import UserDetailsPage from './components/UserDetailsPage';
+import PaymentStatus from './components/PaymentStatus';
+import RetryPayment from './components/RetryPayment';
 
 // Role-based Dashboard Component
 const RoleBasedDashboard: React.FC = () => {
@@ -125,6 +127,8 @@ const AppContent: React.FC = () => {
             </ProtectedRoute>
           } 
         />
+        <Route path="/payment-status" element={<PaymentStatus />} />
+        <Route path="/retry-payment/:bookingId" element={<RetryPayment />} />
         <Route path="*" element={<LandingPage />} />
       </Routes>
     </Router>

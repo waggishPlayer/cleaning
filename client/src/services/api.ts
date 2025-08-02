@@ -325,7 +325,7 @@ async sendWhatsAppOTP(phone: string): Promise<ApiResponse<null>> {
     return response.data;
   }
 
-  // Payment endpoints
+  // Payment endpoints - Razorpay
   async createPaymentOrder(bookingId: string): Promise<ApiResponse<{ orderId: string; amount: number; currency: string }>> {
     const response: AxiosResponse<ApiResponse<{ orderId: string; amount: number; currency: string }>> = await this.api.post('/payments/create-order', {
       bookingId
@@ -346,6 +346,36 @@ async sendWhatsAppOTP(phone: string): Promise<ApiResponse<null>> {
   async getPaymentStatus(bookingId: string): Promise<ApiResponse<{ status: string; details: any }>> {
     const response: AxiosResponse<ApiResponse<{ status: string; details: any }>> = await this.api.get(`/payments/status/${bookingId}`);
     return response.data;
+  }
+
+  // Payment endpoints - PhonePe
+  async createPhonePeOrder(bookingId: string, amount: number): Promise<ApiResponse<{ transactionId: string; paymentUrl: string }>> {
+    console.log('API Service: Creating PhonePe order with bookingId:', bookingId, 'amount:', amount);
+    try {
+      const response: AxiosResponse<ApiResponse<{ transactionId: string; paymentUrl: string }>> = 
+        await this.api.post('/payments/phonepe/create-order', {
+          bookingId,
+          amount
+        });
+      console.log('API Service: PhonePe order creation response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('API Service: Error creating PhonePe order:', error);
+      throw error;
+    }
+  }
+
+  async checkPhonePeStatus(transactionId: string): Promise<ApiResponse<{ paymentStatus: string; phonePeStatus: string; booking: Booking }>> {
+    console.log('API Service: Checking PhonePe status for transactionId:', transactionId);
+    try {
+      const response: AxiosResponse<ApiResponse<{ paymentStatus: string; phonePeStatus: string; booking: Booking }>> = 
+        await this.api.get(`/payments/phonepe/status/${transactionId}`);
+      console.log('API Service: PhonePe status check response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('API Service: Error checking PhonePe status:', error);
+      throw error;
+    }
   }
 
   // Health check
