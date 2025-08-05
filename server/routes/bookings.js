@@ -132,10 +132,10 @@ router.post('/', protect, authorize('user'), async (req, res) => {
       location,
       notes: { customer: notes },
       price,
-      paymentMethod: paymentMethod || 'cash' // Default to cash if not specified
+      paymentMethod: paymentMethod || 'phonepe' // Default to phonepe if not specified
     });
     
-    console.log('Created booking with payment method:', paymentMethod || 'cash');
+    console.log('Created booking with payment method:', paymentMethod || 'phonepe');
 
     const populatedBooking = await Booking.findById(booking._id)
       .populate('vehicle', 'make model year licensePlate color');

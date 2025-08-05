@@ -23,6 +23,7 @@ import ResetPassword from './components/ResetPassword';
 import UserDetailsPage from './components/UserDetailsPage';
 import PaymentStatus from './components/PaymentStatus';
 import RetryPayment from './components/RetryPayment';
+import PhonePeBookingPage from './components/PhonePeBookingPage';
 
 // Role-based Dashboard Component
 const RoleBasedDashboard: React.FC = () => {
@@ -105,6 +106,14 @@ const AppContent: React.FC = () => {
           element={
             <ProtectedRoute>
               <BookingPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/phonepe-booking" 
+          element={
+            <ProtectedRoute>
+              <PhonePeBookingPage />
             </ProtectedRoute>
           } 
         />

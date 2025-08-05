@@ -75,7 +75,7 @@ const bookingSchema = new mongoose.Schema({
   paymentMethod: {
     type: String,
     enum: ['cash', 'phonepe'],
-    default: 'cash'
+    default: 'phonepe'
   },
   notes: {
     customer: {

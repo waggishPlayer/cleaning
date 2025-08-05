@@ -20,6 +20,7 @@ const Navbar: React.FC = () => {
           {user ? (
             <>
               <Link to="/dashboard" className="hover:text-[#00ddff] transition-colors">Dashboard</Link>
+              <Link to="/phonepe-booking" className="hover:text-[#00ddff] transition-colors">Book Service</Link>
               <button 
                 onClick={handleLogout} 
                 className="hover:text-[#00ddff] transition-colors"

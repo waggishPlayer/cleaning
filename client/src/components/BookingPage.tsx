@@ -258,18 +258,8 @@ const BookingPage: React.FC = () => {
   };
 
   const handleBookingSubmit = async () => {
-    console.log('%c PAYMENT SUBMISSION', 'background: #ff0000; color: #ffffff; font-size: 20px');
-    console.log('Handling booking submission with payment method:', bookingData.paymentMethod);
-    console.log('Booking data:', bookingData);
-    
-    // Make sure we're using PhonePe payment
-    if (bookingData.paymentMethod === 'phonepe') {
-      await initiatePhonePePayment();
-    } else {
-      // Force PhonePe payment method
-      setBookingData(prev => ({ ...prev, paymentMethod: 'phonepe' }));
-      await initiatePhonePePayment();
-    }
+    // Always use PhonePe payment
+    await initiatePhonePePayment();
   };
 
   const initiatePhonePePayment = async () => {
@@ -293,19 +283,16 @@ const BookingPage: React.FC = () => {
         setError('Please select a vehicle');
         return;
       }
-
-      // Validate all required fields before proceeding
       if (!bookingData.dateTime.date || !bookingData.dateTime.time) {
         setError('Please select a date and time');
         return;
       }
-
       if (!bookingData.address) {
         setError('Please select a service location');
         return;
       }
 
-      // First create the booking
+      // Always create booking with paymentMethod: 'phonepe'
       const bookingPayload: BookingFormData = {
         vehicleId: bookingData.vehicle._id,
         serviceType: serviceType as BookingFormData['serviceType'],
@@ -322,52 +309,28 @@ const BookingPage: React.FC = () => {
         paymentMethod: 'phonepe'
       };
 
-      console.log('Creating booking with payload:', bookingPayload);
       const bookingResponse = await apiService.createBooking(bookingPayload);
-      console.log('Booking response:', bookingResponse);
-      
       if (bookingResponse.success && bookingResponse.data) {
         // Now create PhonePe payment order
         const amount = bookingData.service?.price || 0;
-        console.log('Creating PhonePe order with amount:', amount);
         const paymentResponse = await apiService.createPhonePeOrder(bookingResponse.data._id, amount);
-        console.log('PhonePe payment response:', paymentResponse);
-        
         if (paymentResponse.success && paymentResponse.data) {
-          // Store transaction ID in session storage for reference
-          if (paymentResponse.data.transactionId) {
-            sessionStorage.setItem('phonePeTransactionId', paymentResponse.data.transactionId);
-            sessionStorage.setItem('bookingId', bookingResponse.data._id);
-            console.log('Stored transaction ID in session storage:', paymentResponse.data.transactionId);
-          }
-          
-          // Show loading message before redirect
-          setError('');
-          
-          // Redirect to PhonePe payment page
-          console.log('Redirecting to PhonePe payment URL:', paymentResponse.data.paymentUrl);
           window.location.href = paymentResponse.data.paymentUrl;
-          
-          // Note: The redirect to payment status page will happen after PhonePe redirects back to our site
-          // This is handled by the PhonePe redirect URL which points to our /payment-status page
         } else {
-          console.error('Failed to create PhonePe payment:', paymentResponse.error);
           setError(paymentResponse.error || 'Failed to create payment');
         }
       } else {
-        console.error('Failed to create booking:', bookingResponse.error);
         setError(bookingResponse.error || 'Failed to create booking');
       }
     } catch (error: any) {
-      console.error('Error in payment process:', error);
       setError(error.message || 'Error processing payment');
     } finally {
       setLoading(false);
     }
   };
 
-  // This function is only called when cash payment is selected
-  const createBookingDirect = async () => {
+  // This function is an alternative way to create a booking with PhonePe payment
+  const createBookingAndPay = async () => {
     setLoading(true);
     try {
       // Map service names to valid enum values in the Booking model
@@ -402,16 +365,22 @@ const BookingPage: React.FC = () => {
         },
         notes: bookingData.specialInstructions,
         price: bookingData.service?.price || 0,
-        paymentMethod: 'cash'
+        paymentMethod: 'phonepe'
       };
 
-      const response = await apiService.createBooking(bookingPayload);
+      const bookingResponse = await apiService.createBooking(bookingPayload);
       
-      if (response.success) {
-        alert('Booking created successfully! You can pay cash when our team arrives.');
-        resetForm();
+      if (bookingResponse.success && bookingResponse.data) {
+        // Now create PhonePe payment order
+        const amount = bookingData.service?.price || 0;
+        const paymentResponse = await apiService.createPhonePeOrder(bookingResponse.data._id, amount);
+        if (paymentResponse.success && paymentResponse.data) {
+          window.location.href = paymentResponse.data.paymentUrl;
+        } else {
+          setError(paymentResponse.error || 'Failed to create payment');
+        }
       } else {
-        setError(response.error || 'Failed to create booking');
+        setError(bookingResponse.error || 'Failed to create booking');
       }
     } catch (error: any) {
       setError(error.message || 'Error creating booking');
@@ -833,37 +802,6 @@ const BookingPage: React.FC = () => {
                     <span className="text-blue-600">${bookingData.service?.price}</span>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-3">Payment Method</h3>
-              
-              <div className="space-y-3">
-                <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50 bg-blue-500 text-white border-blue-500">
-                  <input
-                    type="radio"
-                    name="payment"
-                    value="phonepe"
-                    checked={bookingData.paymentMethod === 'phonepe'}
-                    onChange={() => setBookingData({ ...bookingData, paymentMethod: 'phonepe' })}
-                    className="text-blue-600"
-                  />
-                  <img src="/phonepe-logo.png" alt="PhonePe" className="w-5 h-5 ml-3" onError={(e) => { e.currentTarget.src = 'https://www.phonepe.com/webstatic/static/favicon-48x48-c1244bed07.png'; }} />
-                  <span className="ml-3 font-bold">PhonePe (Recommended)</span>
-                </label>
-                
-                <label className="flex items-center space-x-3 p-3 border rounded-lg cursor-not-allowed bg-gray-100 text-gray-500">
-                  <input
-                    type="radio"
-                    name="payment"
-                    value="cash"
-                    disabled
-                    className="text-gray-400"
-                  />
-                  <div className="w-5 h-5 bg-gray-400 rounded text-white text-xs flex items-center justify-center font-bold">₹</div>
-                  <span>Cash on Service (Currently Unavailable)</span>
-                </label>
               </div>
             </div>
 
