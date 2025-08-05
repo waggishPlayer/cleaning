@@ -20,12 +20,16 @@ const MERCHANT_ID = process.env.NODE_ENV === 'production'
 
 console.log(`PhonePe Controller - Using Merchant ID: ${MERCHANT_ID}`);
 console.log(`PhonePe Controller - Using Client ID: ${PHONEPE_CLIENT_ID}`);
+console.log(`PhonePe Controller - Using Client Secret: ${PHONEPE_CLIENT_SECRET.substring(0, 10)}...`);
 console.log(`PhonePe Controller - Using Base URL: ${PHONEPE_BASE_URL}`);
 
 // Create PhonePe payment order
 const createPhonePeOrder = async (req, res) => {
     try {
-        console.log('PhonePe order creation request received:', req.body);
+        console.log('=== PhonePe order creation request received ===');
+        console.log('Request body:', JSON.stringify(req.body, null, 2));
+        console.log('Request headers:', JSON.stringify(req.headers, null, 2));
+        console.log('User from auth middleware:', req.user);
         const { amount, currency = 'INR', bookingId } = req.body;
 
         // Validate required fields
@@ -34,6 +38,22 @@ const createPhonePeOrder = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'Amount and booking ID are required'
+            });
+        }
+
+        // Validate amount is a positive number
+        if (typeof amount !== 'number' || amount <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Amount must be a positive number'
+            });
+        }
+
+        // Validate booking ID format
+        if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid booking ID format'
             });
         }
 

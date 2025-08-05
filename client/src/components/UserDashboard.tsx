@@ -50,21 +50,11 @@ const UserDashboard: React.FC = () => {
   };
 
   const handleBookingSubmit = async (bookingData: any) => {
-    setBookingLoading(true);
-    setBookingError('');
-    try {
-      const response = await apiService.createBooking(bookingData);
-      if (response.success) {
-        setShowBookingModal(false);
-        fetchUserBookings();
-      } else {
-        setBookingError(response.error || 'Failed to create booking');
-      }
-    } catch (error: any) {
-      setBookingError(error.message || 'Error creating booking');
-    } finally {
-      setBookingLoading(false);
-    }
+    // This function is now handled entirely within BookingForm
+    // The form will create booking and redirect to payment
+    // We just need to close the modal and refresh bookings when user returns
+    setShowBookingModal(false);
+    fetchUserBookings();
   };
 
   const handleBookingCancel = () => {

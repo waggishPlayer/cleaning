@@ -357,6 +357,52 @@ async sendWhatsAppOTP(phone: string): Promise<ApiResponse<null>> {
       throw error;
     }
   }
+  
+  // PhonePe SDK Integration endpoints
+  async createPhonePeSdkOrder(bookingId: string, amount: number): Promise<ApiResponse<{ transactionId: string; paymentUrl: string }>> {
+    console.log('API Service: Creating PhonePe SDK order with bookingId:', bookingId, 'amount:', amount);
+    try {
+      const response: AxiosResponse<ApiResponse<{ transactionId: string; paymentUrl: string }>> = 
+        await this.api.post('/phonepe-sdk/create-order', {
+          bookingId,
+          amount
+        });
+      console.log('API Service: PhonePe SDK order creation response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('API Service: Error creating PhonePe SDK order:', error);
+      throw error;
+    }
+  }
+
+  async createPhonePeFrontendSdkOrder(bookingId: string, amount: number): Promise<ApiResponse<{ token: string; merchantId: string; merchantOrderId: string; amount: number }>> {
+    console.log('API Service: Creating PhonePe Frontend SDK order with bookingId:', bookingId, 'amount:', amount);
+    try {
+      const response: AxiosResponse<ApiResponse<{ token: string; merchantId: string; merchantOrderId: string; amount: number }>> = 
+        await this.api.post('/phonepe-sdk/create-sdk-order', {
+          bookingId,
+          amount
+        });
+      console.log('API Service: PhonePe Frontend SDK order creation response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('API Service: Error creating PhonePe Frontend SDK order:', error);
+      throw error;
+    }
+  }
+
+  async checkPhonePeSdkStatus(transactionId: string): Promise<ApiResponse<{ paymentStatus: string; phonePeStatus: string; booking: Booking }>> {
+    console.log('API Service: Checking PhonePe SDK status for transactionId:', transactionId);
+    try {
+      const response: AxiosResponse<ApiResponse<{ paymentStatus: string; phonePeStatus: string; booking: Booking }>> = 
+        await this.api.get(`/phonepe-sdk/status/${transactionId}`);
+      console.log('API Service: PhonePe SDK status check response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('API Service: Error checking PhonePe SDK status:', error);
+      throw error;
+    }
+  }
 
   // PhonePe Integration endpoints (Standalone phone-pe folder)
   async createPhonePePayment(bookingId: string, amount: number, merchantTransactionId: string): Promise<ApiResponse<{ transactionId: string; paymentUrl: string }>> {

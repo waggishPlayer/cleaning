@@ -258,9 +258,79 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onCancel, isLoading
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [submittingBooking, setSubmittingBooking] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    setSubmittingBooking(true);
+    setPaymentError('');
+
+    // Comprehensive form validation
+    if (!formData.vehicleId) {
+      setPaymentError('Please select a vehicle');
+      setSubmittingBooking(false);
+      return;
+    }
+
+    if (!formData.serviceType) {
+      setPaymentError('Please select a service type');
+      setSubmittingBooking(false);
+      return;
+    }
+
+    if (!formData.scheduledDate) {
+      setPaymentError('Please select a date');
+      setSubmittingBooking(false);
+      return;
+    }
+
+    if (!formData.scheduledTime) {
+      setPaymentError('Please select a time');
+      setSubmittingBooking(false);
+      return;
+    }
+
+    if (!formData.location.address || !formData.location.city || !formData.location.state || !formData.location.zipCode) {
+      setPaymentError('Please fill in all location details (address, city, state, and ZIP code)');
+      setSubmittingBooking(false);
+      return;
+    }
+
+    if (!formData.price || formData.price <= 0) {
+      setPaymentError('Please select a service to see pricing');
+      setSubmittingBooking(false);
+      return;
+    }
+
+    try {
+      console.log('Submitting booking with data:', formData);
+      // Create booking first
+      const bookingResponse = await apiService.createBooking(formData);
+      
+      if (bookingResponse.success && bookingResponse.data) {
+        // Now initiate PhonePe payment
+        const paymentResponse = await apiService.createPhonePeOrder(bookingResponse.data._id, formData.price);
+        
+        if (paymentResponse.success && paymentResponse.data) {
+          // Store booking and transaction IDs for reference
+          sessionStorage.setItem('bookingId', bookingResponse.data._id);
+          sessionStorage.setItem('phonePeTransactionId', paymentResponse.data.transactionId);
+          
+          // Redirect to PhonePe payment page
+          window.location.href = paymentResponse.data.paymentUrl;
+        } else {
+          setPaymentError(paymentResponse.error || 'Failed to initiate payment');
+        }
+      } else {
+        setPaymentError(bookingResponse.error || 'Failed to create booking');
+      }
+    } catch (error: any) {
+      console.error('Error creating booking or payment:', error);
+      setPaymentError(error.message || 'An error occurred while processing your request');
+    } finally {
+      setSubmittingBooking(false);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -533,6 +603,20 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onCancel, isLoading
             />
           </div>
 
+          {/* Payment Error */}
+          {paymentError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex">
+                <svg className="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                <div className="ml-3">
+                  <p className="text-sm text-red-800">{paymentError}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Price Summary */}
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="flex justify-between items-center">
@@ -552,10 +636,17 @@ const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onCancel, isLoading
             </button>
             <button
               type="submit"
-              disabled={isLoading || vehicles.length === 0}
-              className="flex-1 py-2 px-3 sm:px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+              disabled={submittingBooking || vehicles.length === 0}
+              className="flex-1 py-2 px-3 sm:px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base flex items-center justify-center"
             >
-              {isLoading ? 'Booking...' : 'Book Service'}
+              {submittingBooking ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Processing...
+                </>
+              ) : (
+                'Book Service & Pay'
+              )}
             </button>
           </div>
         </form>

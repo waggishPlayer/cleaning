@@ -259,7 +259,7 @@ const BookingPage: React.FC = () => {
 
   const handleBookingSubmit = async () => {
     // Always use PhonePe payment
-    await initiatePhonePePayment();
+    await createBookingAndPay();
   };
 
   const initiatePhonePePayment = async () => {
@@ -311,11 +311,16 @@ const BookingPage: React.FC = () => {
 
       const bookingResponse = await apiService.createBooking(bookingPayload);
       if (bookingResponse.success && bookingResponse.data) {
-        // Now create PhonePe payment order
+        // Now create PhonePe payment order using SDK
         const amount = bookingData.service?.price || 0;
-        const paymentResponse = await apiService.createPhonePeOrder(bookingResponse.data._id, amount);
+        const paymentResponse = await apiService.createPhonePeSdkOrder(bookingResponse.data._id, amount);
         if (paymentResponse.success && paymentResponse.data) {
-          window.location.href = paymentResponse.data.paymentUrl;
+          // Store transaction details for reference
+          sessionStorage.setItem('phonePeTransactionId', paymentResponse.data.transactionId);
+          sessionStorage.setItem('bookingId', bookingResponse.data._id);
+          
+          // Redirect to PhonePe payment page
+          window.location.href = paymentResponse.data.checkoutPageUrl || paymentResponse.data.paymentUrl;
         } else {
           setError(paymentResponse.error || 'Failed to create payment');
         }
@@ -347,8 +352,34 @@ const BookingPage: React.FC = () => {
 
       const serviceType = serviceTypeMap[bookingData.service?.name || ''] || 'exterior' as 'exterior' | 'interior' | 'full-service' | 'premium' | 'deep-clean' | 'detail-clean' | 'demo';
 
+      // Comprehensive validation
       if (!bookingData.vehicle?._id) {
         setError('Please select a vehicle');
+        return;
+      }
+
+      if (!bookingData.service?.name) {
+        setError('Please select a service');
+        return;
+      }
+
+      if (!bookingData.dateTime.date) {
+        setError('Please select a date');
+        return;
+      }
+
+      if (!bookingData.dateTime.time) {
+        setError('Please select a time');
+        return;
+      }
+
+      if (!bookingData.address?.street || !bookingData.address?.city || !bookingData.address?.state || !bookingData.address?.zipCode) {
+        setError('Please provide complete address information (street, city, state, and ZIP code)');
+        return;
+      }
+
+      if (!bookingData.service?.price || bookingData.service.price <= 0) {
+        setError('Invalid service price');
         return;
       }
 
@@ -371,11 +402,16 @@ const BookingPage: React.FC = () => {
       const bookingResponse = await apiService.createBooking(bookingPayload);
       
       if (bookingResponse.success && bookingResponse.data) {
-        // Now create PhonePe payment order
+        // Now create PhonePe payment order using SDK
         const amount = bookingData.service?.price || 0;
-        const paymentResponse = await apiService.createPhonePeOrder(bookingResponse.data._id, amount);
+        const paymentResponse = await apiService.createPhonePeSdkOrder(bookingResponse.data._id, amount);
         if (paymentResponse.success && paymentResponse.data) {
-          window.location.href = paymentResponse.data.paymentUrl;
+          // Store transaction details for reference
+          sessionStorage.setItem('phonePeTransactionId', paymentResponse.data.transactionId);
+          sessionStorage.setItem('bookingId', bookingResponse.data._id);
+          
+          // Redirect to PhonePe payment page
+          window.location.href = paymentResponse.data.checkoutPageUrl || paymentResponse.data.paymentUrl;
         } else {
           setError(paymentResponse.error || 'Failed to create payment');
         }

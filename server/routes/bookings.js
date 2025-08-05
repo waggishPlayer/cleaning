@@ -89,6 +89,10 @@ router.get('/:id', protect, async (req, res) => {
 // @access  Private
 router.post('/', protect, authorize('user'), async (req, res) => {
   try {
+    console.log('=== Booking creation request received ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    console.log('User from auth middleware:', req.user);
+    
     const {
       vehicleId,
       serviceType,
@@ -100,17 +104,76 @@ router.post('/', protect, authorize('user'), async (req, res) => {
       paymentMethod
     } = req.body;
 
+    // Validate required fields first
+    if (!vehicleId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vehicle ID is required'
+      });
+    }
+
+    if (!serviceType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Service type is required'
+      });
+    }
+
+    if (!scheduledDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Scheduled date is required'
+      });
+    }
+
+    if (!scheduledTime) {
+      return res.status(400).json({
+        success: false,
+        message: 'Scheduled time is required'
+      });
+    }
+
+    if (!location || !location.address || !location.city || !location.state || !location.zipCode) {
+      return res.status(400).json({
+        success: false,
+        message: 'Complete location information is required (address, city, state, zipCode)'
+      });
+    }
+
+    if (!price || price <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid price is required'
+      });
+    }
+
+    // Validate vehicleId format
+    if (!vehicleId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid vehicle ID format'
+      });
+    }
+
     // Verify vehicle belongs to user
-    const vehicle = await Vehicle.findOne({
-      _id: vehicleId,
-      owner: req.user._id,
-      isActive: true
-    });
+    let vehicle;
+    try {
+      vehicle = await Vehicle.findOne({
+        _id: vehicleId,
+        owner: req.user._id,
+        isActive: true
+      });
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid vehicle ID'
+      });
+    }
 
     if (!vehicle) {
       return res.status(404).json({
         success: false,
-        message: 'Vehicle not found'
+        message: 'Vehicle not found or does not belong to you'
       });
     }
 

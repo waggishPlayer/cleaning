@@ -32,6 +32,7 @@ const addressRoutes = require('./routes/addresses');
 const adminRoutes = require('./routes/admin');
 const paymentRoutes = require('./routes/payments');
 const phonepeRoutes = require('./routes/phonepe');
+const phonepeSdkRoutes = require('./routes/phonepeSdk');
 
 const app = express();
 
@@ -79,6 +80,7 @@ app.use('/api/addresses', addressRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/phonepe', phonepeRoutes);
+app.use('/api/phonepe-sdk', phonepeSdkRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

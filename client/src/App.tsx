@@ -24,6 +24,8 @@ import UserDetailsPage from './components/UserDetailsPage';
 import PaymentStatus from './components/PaymentStatus';
 import RetryPayment from './components/RetryPayment';
 import PhonePeBookingPage from './components/PhonePeBookingPage';
+import PhonePeSdkDemo from './pages/PhonePeSdkDemo';
+import PhonePeSimpleDemo from './pages/PhonePeSimpleDemo';
 
 // Role-based Dashboard Component
 const RoleBasedDashboard: React.FC = () => {
@@ -138,6 +140,8 @@ const AppContent: React.FC = () => {
         />
         <Route path="/payment-status" element={<PaymentStatus />} />
         <Route path="/retry-payment/:bookingId" element={<RetryPayment />} />
+        <Route path="/phonepe-sdk-demo" element={<PhonePeSdkDemo />} />
+        <Route path="/phonepe-simple-demo" element={<PhonePeSimpleDemo />} />
         <Route path="*" element={<LandingPage />} />
       </Routes>
     </Router>

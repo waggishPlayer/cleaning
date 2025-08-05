@@ -28,48 +28,21 @@ const PhonePePayment: React.FC<PhonePePaymentProps> = ({
     try {
       console.log('Initiating PhonePe payment for booking:', bookingId, 'amount:', amount);
       
-      // Generate a unique transaction ID
-      const merchantTransactionId = `TXN_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-      
-      // Call the phone-pe API to create payment
-      const response = await fetch('/api/phonepe/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          amount,
-          merchantTransactionId,
-          bookingId
-        })
-      });
+      // Use SDK to request payment
+      const response = await apiService.createPhonePeSdkOrder(bookingId, amount);
 
-      const result = await response.json();
-      console.log('PhonePe payment response:', result);
-
-      if (result.success && result.data) {
-        // Store transaction ID in session storage for reference
-        sessionStorage.setItem('phonePeTransactionId', result.data.transactionId);
+      if (response.success && response.data) {
+        // Save transaction details
+        sessionStorage.setItem('phonePeTransactionId', response.data.transactionId);
         sessionStorage.setItem('bookingId', bookingId);
-        
-        console.log('Payment initiated successfully, redirecting to:', result.data.paymentUrl);
-        
-        // Call success callback if provided
-        if (onSuccess) {
-          onSuccess(result.data.transactionId);
-        }
-        
-        // Redirect to PhonePe payment page
-        window.location.href = result.data.paymentUrl;
+
+        console.log('Redirecting to:', response.data.checkoutPageUrl || response.data.paymentUrl);
+
+        // Redirect user to checkout page from response
+        window.location.href = response.data.checkoutPageUrl || response.data.paymentUrl;
       } else {
-        const errorMessage = result.message || result.error || 'Failed to initiate payment';
-        console.error('Payment initiation failed:', errorMessage);
-        setError(errorMessage);
-        
-        if (onError) {
-          onError(errorMessage);
-        }
+        setError('Failed to initiate payment');
+        if (onError) onError('Failed to initiate payment');
       }
     } catch (error: any) {
       console.error('Error initiating PhonePe payment:', error);

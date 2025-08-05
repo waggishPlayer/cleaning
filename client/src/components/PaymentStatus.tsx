@@ -34,9 +34,9 @@ const PaymentStatus: React.FC = () => {
           return;
         }
 
-        // Check payment status from PhonePe
-        console.log('Calling checkPhonePeStatus with transaction ID:', finalTransactionId);
-        const response = await apiService.checkPhonePeStatus(finalTransactionId);
+        // Check payment status from PhonePe SDK
+        console.log('Calling checkPhonePeSdkStatus with transaction ID:', finalTransactionId);
+        const response = await apiService.checkPhonePeSdkStatus(finalTransactionId);
         console.log('PhonePe status response:', response);
 
         if (response.success && response.data) {
