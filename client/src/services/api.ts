@@ -329,10 +329,10 @@ async sendWhatsAppOTP(phone: string): Promise<ApiResponse<null>> {
 
 
   // Payment endpoints - PhonePe (Main integration)
-  async createPhonePeOrder(bookingId: string, amount: number): Promise<ApiResponse<{ transactionId: string; paymentUrl: string }>> {
+  async createPhonePeOrder(bookingId: string, amount: number): Promise<ApiResponse<{ transactionId: string; paymentUrl: string; checkoutPageUrl?: string }>> {
     console.log('API Service: Creating PhonePe order with bookingId:', bookingId, 'amount:', amount);
     try {
-      const response: AxiosResponse<ApiResponse<{ transactionId: string; paymentUrl: string }>> = 
+      const response: AxiosResponse<ApiResponse<{ transactionId: string; paymentUrl: string; checkoutPageUrl?: string }>> = 
         await this.api.post('/payments/phonepe/create-order', {
           bookingId,
           amount
@@ -359,10 +359,10 @@ async sendWhatsAppOTP(phone: string): Promise<ApiResponse<null>> {
   }
   
   // PhonePe SDK Integration endpoints
-  async createPhonePeSdkOrder(bookingId: string, amount: number): Promise<ApiResponse<{ transactionId: string; paymentUrl: string }>> {
+  async createPhonePeSdkOrder(bookingId: string, amount: number): Promise<ApiResponse<{ transactionId: string; paymentUrl: string; checkoutPageUrl?: string }>> {
     console.log('API Service: Creating PhonePe SDK order with bookingId:', bookingId, 'amount:', amount);
     try {
-      const response: AxiosResponse<ApiResponse<{ transactionId: string; paymentUrl: string }>> = 
+      const response: AxiosResponse<ApiResponse<{ transactionId: string; paymentUrl: string; checkoutPageUrl?: string }>> = 
         await this.api.post('/phonepe-sdk/create-order', {
           bookingId,
           amount
