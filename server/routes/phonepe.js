@@ -7,7 +7,7 @@ const Booking = require("../models/Booking");
 // PhonePe configuration from environment variables
 const PHONEPE_CLIENT_ID = process.env.PHONEPE_CLIENT_ID || "SU2507312040090646235684";
 const PHONEPE_CLIENT_SECRET = process.env.PHONEPE_CLIENT_SECRET || "c643640d-f84c-4e84-abce-a9b161c73d0a";
-const PHONEPE_MERCHANT_ID = process.env.PHONEPE_MERCHANT_ID || "SU2507312040090646235684";
+const PHONEPE_MERCHANT_ID = process.env.PHONEPE_MERCHANT_ID || "M23I1QLTF4I88";
 const PHONEPE_BASE_URL = process.env.NODE_ENV === 'production' 
     ? "https://api.phonepe.com/apis/hermes"
     : "https://api-preprod.phonepe.com/apis/pg-sandbox";

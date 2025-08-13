@@ -7,16 +7,22 @@ const Booking = require('../models/Booking');
 const PHONEPE_CLIENT_ID = process.env.PHONEPE_CLIENT_ID || "PGTESTPAYUAT";
 const PHONEPE_CLIENT_SECRET = process.env.PHONEPE_CLIENT_SECRET || "96434309-7796-489d-8924-ab56988a6076";
 
-// Use production URL in production, sandbox URL in development
+// Production PhonePe configuration
+// Updated API endpoint - PhonePe production API structure
 const PHONEPE_BASE_URL = process.env.NODE_ENV === 'production'
-    ? (process.env.PHONEPE_BASE_URL || "https://api.phonepe.com/apis/hermes")
-    : (process.env.PHONEPE_BASE_URL || "https://api-preprod.phonepe.com/apis/pg-sandbox");
+    ? (process.env.PHONEPE_BASE_URL || "https://api.phonepe.com/apis/pg")
+    : "https://api-preprod.phonepe.com/apis/pg-sandbox";
 
-// For testing, use PGTESTPAYUAT86 as the merchant ID
-// For production, use the actual merchant ID from environment variables
+// Use production merchant ID
 const MERCHANT_ID = process.env.NODE_ENV === 'production' 
     ? process.env.PHONEPE_MERCHANT_ID 
-    : (process.env.PHONEPE_MERCHANT_ID || "PGTESTPAYUAT86");
+    : "PGTESTPAYUAT86";
+
+// Log the current configuration for debugging
+console.log('PhonePe Configuration:');
+console.log('- NODE_ENV:', process.env.NODE_ENV);
+console.log('- MERCHANT_ID from env:', process.env.PHONEPE_MERCHANT_ID);
+console.log('- Final MERCHANT_ID:', MERCHANT_ID);
 
 console.log(`PhonePe Controller - Using Merchant ID: ${MERCHANT_ID}`);
 console.log(`PhonePe Controller - Using Client ID: ${PHONEPE_CLIENT_ID}`);
