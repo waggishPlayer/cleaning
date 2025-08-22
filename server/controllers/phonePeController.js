@@ -166,7 +166,7 @@ const createPhonePeOrder = async (req, res) => {
         // Create V2 API payload
         const payload = {
             merchantOrderId: merchantOrderId,
-            amount: amount, // Amount in paisa (already converted)
+            amount: amount * 100, // Convert rupees to paise
             paymentFlow: {
                 type: "PG_CHECKOUT",
                 merchantUrls: {
