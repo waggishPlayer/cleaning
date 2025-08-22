@@ -11,7 +11,7 @@ const PHONEPE_BASE_URL = 'https://api.phonepe.com/apis/pg';
 async function testFinalEndpoint() {
     try {
         console.log('🚀 Testing UPDATED PhonePe production endpoint...');
-        console.log(`API URL: ${PHONEPE_BASE_URL}/pg/v1/pay`);
+        console.log(`API URL: ${PHONEPE_BASE_URL}/checkout/v2/pay`);
         console.log(`Merchant ID: ${MERCHANT_ID}`);
         
         // Generate test transaction ID
@@ -36,15 +36,15 @@ async function testFinalEndpoint() {
         // Convert payload to base64
         const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString('base64');
         
-        // Generate X-VERIFY header
+        // Generate X-VERIFY header for V2 API
         const xVerify = crypto
             .createHash('sha256')
-            .update(payloadBase64 + '/pg/v1/pay' + CLIENT_SECRET)
+            .update(payloadBase64 + '/checkout/v2/pay' + CLIENT_SECRET)
             .digest('hex') + '###1';
         
-        // Make API call
+        // Make API call to V2 endpoint
         const response = await axios.post(
-            `${PHONEPE_BASE_URL}/pg/v1/pay`,
+            `${PHONEPE_BASE_URL}/checkout/v2/pay`,
             { request: payloadBase64 },
             {
                 headers: {

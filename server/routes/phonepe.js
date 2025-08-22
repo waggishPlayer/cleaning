@@ -62,15 +62,15 @@ router.post("/create", async (req, res) => {
     // Convert payload to base64
     const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString("base64");
     
-    // Generate X-VERIFY header
-    const dataToHash = payloadBase64 + "/pg/v1/pay" + PHONEPE_CLIENT_SECRET;
+    // Generate X-VERIFY header for V2 API
+    const dataToHash = payloadBase64 + "/checkout/v2/pay" + PHONEPE_CLIENT_SECRET;
     const sha256 = crypto.createHash("sha256").update(dataToHash).digest("hex");
     const X_VERIFY = sha256 + "###1";
 
     console.log('Making API call to PhonePe');
     
-    // Make API call to PhonePe
-    const response = await fetch(`${PHONEPE_BASE_URL}/pg/v1/pay`, {
+    // Make API call to PhonePe V2 API
+    const response = await fetch(`${PHONEPE_BASE_URL}/checkout/v2/pay`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -189,15 +189,15 @@ router.get("/status/:transactionId", async (req, res) => {
       });
     }
 
-    // Generate X-VERIFY for status check
+    // Generate X-VERIFY for status check using V2 API
     const xVerify = crypto
       .createHash('sha256')
-      .update("/pg/v1/status/" + PHONEPE_MERCHANT_ID + "/" + transactionId + PHONEPE_CLIENT_SECRET)
+      .update("/checkout/v2/order/" + transactionId + "/status" + PHONEPE_CLIENT_SECRET)
       .digest('hex') + '###1';
 
-    // Check payment status from PhonePe
+    // Check payment status from PhonePe V2 API
     const statusResponse = await fetch(
-      `${PHONEPE_BASE_URL}/pg/v1/status/${PHONEPE_MERCHANT_ID}/${transactionId}`,
+      `${PHONEPE_BASE_URL}/checkout/v2/order/${transactionId}/status`,
       {
         headers: {
           'X-VERIFY': xVerify,

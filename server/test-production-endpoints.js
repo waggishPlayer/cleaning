@@ -5,14 +5,10 @@ const axios = require('axios');
 const MERCHANT_ID = 'M23I1QLTF4I88';
 const CLIENT_SECRET = 'c643640d-f84c-4e84-abce-a9b161c73d0a';
 
-// Different possible production endpoints to test
+// Different possible production endpoints to test (updated to V2)
 const ENDPOINTS_TO_TEST = [
-    'https://api.phonepe.com/apis/hermes/pg/v1/pay',
-    'https://api.phonepe.com/apis/pg/v1/pay',  
-    'https://api.phonepe.com/apis/hermes',
-    'https://mercury.phonepe.com/v3/api/pg/pay',
-    'https://api.phonepe.com/v3/pay',
-    'https://api.phonepe.com/pg/v1/pay'
+    'https://api.phonepe.com/apis/pg/checkout/v2/pay',
+    'https://api.phonepe.com/apis/pg'  // Base URL - will append /checkout/v2/pay
 ];
 
 // Test function
@@ -40,12 +36,13 @@ async function testProductionEndpoint(baseUrl) {
         // Convert payload to base64
         const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString('base64');
         
-        // Generate X-VERIFY header
-        let endpoint = '/pg/v1/pay';
-        if (baseUrl.includes('v3')) {
-            endpoint = '/v3/pay';
-        } else if (baseUrl.includes('hermes')) {
-            endpoint = '/pg/v1/pay';
+        // Generate X-VERIFY header for V2 API
+        let endpoint = '/checkout/v2/pay';
+        let fullUrl = baseUrl;
+        
+        // If baseUrl doesn't include the full path, append the endpoint
+        if (!baseUrl.includes('/checkout/v2/pay')) {
+            fullUrl = baseUrl.endsWith('/') ? baseUrl + 'checkout/v2/pay' : baseUrl + '/checkout/v2/pay';
         }
         
         const xVerify = crypto
@@ -55,7 +52,7 @@ async function testProductionEndpoint(baseUrl) {
         
         // Make API call with timeout
         const response = await axios.post(
-            baseUrl,
+            fullUrl,
             { request: payloadBase64 },
             {
                 headers: {
