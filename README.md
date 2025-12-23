@@ -1,4 +1,4 @@
-# SparkleWash - Vehicle Cleaning Service
+Caarvo
 
 A full-stack web application for managing vehicle cleaning services with role-based access control for customers, workers, and administrators.
 
